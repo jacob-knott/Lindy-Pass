@@ -1,20 +1,26 @@
 ```html
 <!doctype html>
-<html lang="en">
+<html lang="en" class="antialiased">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   
   <!-- iOS Native App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Let iOS handle the status bar color dynamically based on light/dark mode -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Lindy Pass">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/1x1.png/120px-1x1.png">
   
   <title>Lindy Pass</title>
   
-  <!-- Tailwind CSS (Loaded directly in browser for mobile setup) -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'media', // Automatically uses your iPhone's Dark/Light mode
+    }
+  </script>
   <style>
     /* Hide scrollbars for clean Lindy aesthetic */
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -24,20 +30,26 @@
     .no-select { -webkit-user-select: none; user-select: none; }
   </style>
 </head>
-<body class="bg-[#FDFDFD] text-[#0A0A0A] font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+<body class="bg-[#FDFDFD] dark:bg-[#0a0a0a] text-[#0A0A0A] dark:text-[#f0f0f0] font-sans transition-colors duration-300">
 
   <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-12 pb-24">
     
     <!-- HEADER -->
-    <header class="mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b-2 border-stone-900 pb-6 mt-4">
+    <header class="mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b-2 border-stone-900 dark:border-stone-700 pb-6 mt-4 relative">
       <div>
         <h1 class="text-3xl font-black tracking-tight uppercase mb-1">Signal Pass</h1>
-        <p id="status-text" class="text-xs text-stone-500 font-mono tracking-wide">SYNCING WIRE...</p>
+        <div class="flex items-center gap-2">
+          <p id="status-text" class="text-xs text-stone-500 dark:text-stone-400 font-mono tracking-wide">BOOTING...</p>
+          <button onclick="fetchFeeds(true)" id="sync-btn" class="text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors p-1 active:scale-90">
+            <!-- Sync Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+          </button>
+        </div>
       </div>
       
       <div class="text-left md:text-right">
-        <div id="date-display" class="text-sm font-mono font-bold text-stone-900"></div>
-        <div id="time-display" class="text-[10px] font-mono text-stone-500 tracking-widest mt-1"></div>
+        <div id="date-display" class="text-sm font-mono font-bold text-stone-900 dark:text-stone-200"></div>
+        <div id="time-display" class="text-[10px] font-mono text-stone-500 dark:text-stone-400 tracking-widest mt-1"></div>
       </div>
     </header>
 
@@ -51,21 +63,21 @@
       <section>
         <div class="flex items-center gap-2 mb-4">
           <div class="w-1.5 h-1.5 bg-stone-400 rotate-45"></div>
-          <h2 class="text-sm font-black tracking-widest text-stone-900 uppercase">The Radar</h2>
-          <div class="h-px bg-stone-200 flex-1 ml-2"></div>
+          <h2 class="text-sm font-black tracking-widest text-stone-900 dark:text-stone-200 uppercase">The Radar</h2>
+          <div class="h-px bg-stone-200 dark:bg-stone-800 flex-1 ml-2"></div>
         </div>
-        <div id="radar-container" class="bg-white border border-stone-200 rounded-xl p-4 sm:p-6 shadow-sm"></div>
+        <div id="radar-container" class="bg-white dark:bg-[#111] border border-stone-200 dark:border-stone-800 rounded-xl p-4 sm:p-6 shadow-sm"></div>
       </section>
 
       <!-- THE WIRE -->
       <section>
         <div class="flex items-center gap-2 mb-4">
-          <div class="w-1.5 h-1.5 bg-stone-900 rotate-45"></div>
-          <h2 class="text-sm font-black tracking-widest text-stone-900 uppercase">The Wire (Live)</h2>
-          <div class="h-px bg-stone-200 flex-1 ml-2"></div>
+          <div class="w-1.5 h-1.5 bg-stone-900 dark:bg-stone-400 rotate-45"></div>
+          <h2 class="text-sm font-black tracking-widest text-stone-900 dark:text-stone-200 uppercase">The Wire</h2>
+          <div class="h-px bg-stone-200 dark:bg-stone-800 flex-1 ml-2"></div>
         </div>
-        <div id="wire-container" class="pl-2 sm:pl-4 border-l border-stone-100">
-          <p class="text-sm text-stone-400 py-4 font-mono animate-pulse">Pulling latest signals...</p>
+        <div id="wire-container" class="pl-2 sm:pl-4 border-l border-stone-200 dark:border-stone-800">
+          <!-- Populated by JS -->
         </div>
       </section>
 
@@ -76,20 +88,20 @@
     // --- STATE ---
     let currentFilter = 'Overview';
     let wireData = [];
-    let isSyncing = true;
+    let isSyncing = false;
 
     const FILTERS = ['Overview', 'Auburn', 'MLB', 'PGA'];
 
     const THE_RADAR = [
-      { sport: 'MLB', category: 'MLB', title: 'MLB Regular Season', time: 'ACTIVE', status: 'ACTIVE', context: 'Daily matchups underway.' },
-      { sport: 'PGA Tour', category: 'PGA', title: 'PGA Weekend Action', time: 'UPCOMING', status: 'ACTIVE', context: 'Tournament play continues.' },
-      { sport: 'Auburn Athletics', category: 'Auburn', title: 'Auburn Portal Watch', time: 'ACTIVE', status: 'ACTIVE', context: 'Monitoring transfer portal movement.' }
+      { sport: 'PGA Tour', category: 'PGA', title: 'RBC Heritage', time: 'ACTIVE', status: 'ACTIVE', context: 'Signature event underway at Harbour Town.' },
+      { sport: 'MLB', category: 'MLB', title: 'Early Season Standings Shift', time: 'DAILY', status: 'ACTIVE', context: 'Tracking divisional races.' },
+      { sport: 'Auburn Football', category: 'Auburn', title: 'A-Day Weekend', time: 'SATURDAY', status: 'PENDING', context: 'Spring game implementations.' },
+      { sport: 'Auburn Basketball', category: 'Auburn', title: 'Transfer Portal Action', time: 'ONGOING', status: 'ACTIVE', context: 'Roster building for 26-27.' }
     ];
 
     // --- UTILITIES ---
     function getTimeAgo(dateString) {
       const now = new Date();
-      // Ensure date parsing handles the timezone properly
       const past = new Date(dateString.replace(/-/g, '/').replace('T', ' ')); 
       const diffMins = Math.floor((now - past) / 60000);
       const diffHrs = Math.floor(diffMins / 60);
@@ -103,13 +115,13 @@
 
     function getImpactLevel(title) {
       const lower = title.toLowerCase();
-      if (lower.includes('injury') || lower.includes('trade') || lower.includes('championship') || lower.includes('portal') || lower.includes('transfer')) {
+      if (lower.includes('injury') || lower.includes('trade') || lower.includes('championship') || lower.includes('portal') || lower.includes('transfer') || lower.includes('commits')) {
         return { level: 'CRITICAL', classes: 'bg-red-600 text-white' };
       }
-      if (lower.includes('win') || lower.includes('lead') || lower.includes('signs') || lower.includes('draft')) {
+      if (lower.includes('win') || lower.includes('lead') || lower.includes('signs') || lower.includes('draft') || lower.includes('rumor')) {
         return { level: 'HIGH', classes: 'bg-orange-500 text-white' };
       }
-      return { level: 'MED', classes: 'bg-stone-200 text-stone-700' };
+      return { level: 'MED', classes: 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300' };
     }
 
     // --- RENDERING ---
@@ -124,8 +136,8 @@
       container.innerHTML = FILTERS.map(f => {
         const isActive = currentFilter === f;
         const classes = isActive 
-          ? 'bg-stone-900 text-white border-stone-900 shadow-sm' 
-          : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400 hover:text-stone-900';
+          ? 'bg-stone-900 dark:bg-stone-200 text-white dark:text-black border-stone-900 dark:border-stone-200 shadow-sm' 
+          : 'bg-white dark:bg-transparent text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-white';
         return `<button onclick="setFilter('${f}')" class="text-xs font-mono tracking-widest uppercase px-3 py-1.5 rounded transition-all whitespace-nowrap border-2 ${classes} no-select">${f}</button>`;
       }).join('');
     }
@@ -140,7 +152,7 @@
       }
 
       container.innerHTML = filtered.map(item => `
-        <div class="py-3 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 group border-b border-stone-100 last:border-0">
+        <div class="py-3 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 group border-b border-stone-100 dark:border-stone-800 last:border-0">
           <div class="w-32 shrink-0 flex items-center gap-2">
             ${item.status === 'ACTIVE' ? `
               <span class="flex h-1.5 w-1.5 relative">
@@ -148,14 +160,14 @@
                 <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
             ` : ''}
-            <span class="text-[10px] font-mono tracking-wider ${item.status === 'ACTIVE' ? 'text-emerald-600 font-bold' : 'text-stone-400'}">${item.time}</span>
+            <span class="text-[10px] font-mono tracking-wider ${item.status === 'ACTIVE' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}">${item.time}</span>
           </div>
           <div class="flex-1 mt-1 sm:mt-0">
             <div class="flex items-center gap-2 mb-0.5">
-              <span class="text-[10px] font-mono text-stone-500 uppercase">${item.sport}</span>
+              <span class="text-[10px] font-mono text-stone-500 dark:text-stone-400 uppercase">${item.sport}</span>
             </div>
-            <h4 class="text-sm font-semibold text-stone-900 leading-tight">${item.title}</h4>
-            <p class="text-xs text-stone-500 mt-0.5">${item.context}</p>
+            <h4 class="text-sm font-semibold text-stone-900 dark:text-stone-100 leading-tight">${item.title}</h4>
+            <p class="text-xs text-stone-500 dark:text-stone-500 mt-0.5">${item.context}</p>
           </div>
         </div>
       `).join('');
@@ -177,17 +189,20 @@
 
       container.innerHTML = filtered.map(item => {
         const impact = getImpactLevel(item.title);
+        // Clean up Reddit titles (remove [Tags])
+        const cleanTitle = item.title.replace(/\[.*?\]/g, '').trim();
+
         return `
-          <div class="py-6 border-b border-stone-200 last:border-0 group">
+          <div class="py-6 border-b border-stone-200 dark:border-stone-800 last:border-0 group">
             <div class="flex flex-wrap items-center gap-3 mb-2">
               <span class="text-[9px] font-bold tracking-widest px-1.5 py-0.5 rounded uppercase ${impact.classes}">${impact.level}</span>
               <span class="text-[10px] font-mono tracking-wider text-stone-500 uppercase">${item.sport}</span>
-              <span class="text-[10px] font-mono text-stone-400 border-l border-stone-300 pl-3">${getTimeAgo(item.pubDate)}</span>
+              <span class="text-[10px] font-mono text-stone-400 border-l border-stone-300 dark:border-stone-700 pl-3">${getTimeAgo(item.pubDate)}</span>
             </div>
-            <h3 class="text-lg font-serif font-medium text-stone-900 leading-snug mb-2">${item.title}</h3>
-            <a href="https://www.google.com/search?q=${encodeURIComponent(item.searchQuery)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 mt-2 rounded-md transition-colors active:scale-95">
+            <h3 class="text-lg font-serif font-medium text-stone-900 dark:text-stone-100 leading-snug mb-2">${cleanTitle}</h3>
+            <a href="https://www.google.com/search?q=${encodeURIComponent(item.searchQuery)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-3 py-1.5 mt-2 rounded-md transition-colors active:scale-95">
               <span>↳ Dig Deeper:</span>
-              <span class="underline decoration-blue-200 underline-offset-2 break-all line-clamp-1">${item.searchQuery}</span>
+              <span class="underline decoration-blue-200 dark:decoration-blue-800 underline-offset-2 break-all line-clamp-1">${item.searchQuery}</span>
             </a>
           </div>
         `;
@@ -202,34 +217,45 @@
       renderWire();
     };
 
-    async function fetchFeeds() {
+    async function fetchFeeds(manual = false) {
+      if (isSyncing) return;
       isSyncing = true;
+      
+      const syncBtn = document.getElementById('sync-btn');
+      syncBtn.classList.add('animate-spin');
       document.getElementById('status-text').innerText = 'SYNCING WIRE...';
       
+      // ESPN Official Feeds + Reddit RSS for Rumors
       const feeds = [
         { sport: 'MLB', category: 'MLB', url: 'https://www.espn.com/espn/rss/mlb/news' },
+        { sport: 'MLB Chatter', category: 'MLB', url: 'https://www.reddit.com/r/baseball/new/.rss' },
         { sport: 'PGA Tour', category: 'PGA', url: 'https://www.espn.com/espn/rss/golf/news' },
-        { sport: 'Auburn Football', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncf/news' },
-        { sport: 'Auburn Basketball', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncb/news' }
+        { sport: 'PGA Chatter', category: 'PGA', url: 'https://www.reddit.com/r/golf/new/.rss' },
+        { sport: 'Auburn Athletics', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncf/news' },
+        { sport: 'Auburn Rumors', category: 'Auburn', url: 'https://www.reddit.com/r/wde/new/.rss' }
       ];
 
       let liveNews = [];
 
       for (let feed of feeds) {
         try {
-          // Using rss2json to convert XML to JSON for the browser
           const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`);
           const data = await res.json();
           
           if (data && data.items) {
             let items = data.items;
             
-            // Filter college sports for Auburn/SEC relevance
-            if (feed.category === 'Auburn') {
+            // Filter national college sports for Auburn/SEC relevance (ignore Reddit filter as it's already specific to r/wde)
+            if (feed.category === 'Auburn' && !feed.sport.includes('Rumors')) {
               items = items.filter(item => {
                 const text = (item.title + ' ' + item.description).toLowerCase();
                 return text.includes('auburn') || text.includes('tigers') || text.includes('sec');
               });
+            }
+
+            // Remove useless stickied Reddit posts or match threads
+            if (feed.sport.includes('Chatter') || feed.sport.includes('Rumors')) {
+              items = items.filter(item => !item.title.toLowerCase().includes('game thread') && !item.title.toLowerCase().includes('weekly'));
             }
 
             const parsed = items.slice(0, 8).map(item => ({
@@ -238,7 +264,7 @@
               category: feed.category,
               title: item.title,
               pubDate: item.pubDate, 
-              searchQuery: `${item.title} ${feed.sport} latest news`
+              searchQuery: `${item.title.replace(/\[.*?\]/g, '').trim()} ${feed.category} latest news`
             }));
             
             liveNews = [...liveNews, ...parsed];
@@ -254,21 +280,42 @@
       const uniqueNews = Array.from(uniqueMap.values());
       
       wireData = uniqueNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+      
+      // CACHING: Save to local storage for instant loading next time
+      localStorage.setItem('lindyPassCache', JSON.stringify(wireData));
+      
       isSyncing = false;
+      syncBtn.classList.remove('animate-spin');
       document.getElementById('status-text').innerText = 'NOISE CANCELLED • HIGH DENSITY';
       
       renderWire();
     }
 
     // --- INITIALIZATION ---
-    setInterval(updateClock, 1000);
-    updateClock();
-    renderFilters();
-    renderRadar();
-    fetchFeeds();
+    function init() {
+      setInterval(updateClock, 1000);
+      updateClock();
+      renderFilters();
+      renderRadar();
 
-    // Auto refresh feed every 15 minutes
-    setInterval(fetchFeeds, 15 * 60 * 1000);
+      // Check for cached data for instant load
+      const cachedData = localStorage.getItem('lindyPassCache');
+      if (cachedData) {
+        try {
+          wireData = JSON.parse(cachedData);
+          document.getElementById('status-text').innerText = 'LOADING FRESH SIGNALS...';
+          renderWire();
+        } catch(e) { console.error('Cache read error'); }
+      }
+
+      // Fetch fresh data in the background
+      fetchFeeds();
+
+      // Auto refresh feed every 15 minutes
+      setInterval(fetchFeeds, 15 * 60 * 1000);
+    }
+
+    init();
   </script>
 </body>
 </html>
