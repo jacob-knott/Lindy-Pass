@@ -3,85 +3,86 @@
 <html lang="en" class="antialiased">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   
-  <!-- iOS Native App Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- Let iOS handle the status bar color dynamically based on light/dark mode -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Lindy Pass">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Signal Pass">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/1x1.png/120px-1x1.png">
   
-  <title>Lindy Pass</title>
+  <title>Signal Pass</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'media', // Automatically uses your iPhone's Dark/Light mode
+      darkMode: 'media',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'San Francisco', 'Helvetica Neue', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+            serif: ['ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif']
+          },
+          colors: {
+            signal: {
+              bg: '#F2F2F7', 
+              bgDark: '#000000',
+              accent: '#0A84FF'
+            }
+          }
+        }
+      }
     }
   </script>
   <style>
-    /* Hide scrollbars for clean Lindy aesthetic */
+    body { -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    /* Disable text selection on UI elements */
     .no-select { -webkit-user-select: none; user-select: none; }
+    
+    .active-press:active { transform: scale(0.98); opacity: 0.8; transition: all 0.1s; }
+    
+    /* Hero Image Gradient Overlay to ensure text readability */
+    .hero-gradient {
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);
+    }
+    
+    /* Truncate text elegantly */
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   </style>
 </head>
-<body class="bg-[#FDFDFD] dark:bg-[#0a0a0a] text-[#0A0A0A] dark:text-[#f0f0f0] font-sans transition-colors duration-300">
+<body class="bg-[#FFFFFF] dark:bg-[#000000] text-[#111] dark:text-[#F2F2F7] transition-colors duration-200 min-h-screen">
 
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-12 pb-24">
+  <div class="h-12 w-full sticky top-0 z-50 bg-[#FFFFFF]/80 dark:bg-[#000000]/80 backdrop-blur-xl md:hidden"></div>
+
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-12 pb-24">
     
-    <!-- HEADER -->
-    <header class="mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b-2 border-stone-900 dark:border-stone-700 pb-6 mt-4 relative">
+    <!-- EXECUTIVE HEADER -->
+    <header class="mb-6 flex justify-between items-end">
       <div>
-        <h1 class="text-3xl font-black tracking-tight uppercase mb-1">Signal Pass</h1>
-        <div class="flex items-center gap-2">
-          <p id="status-text" class="text-xs text-stone-500 dark:text-stone-400 font-mono tracking-wide">BOOTING...</p>
-          <button onclick="fetchFeeds(true)" id="sync-btn" class="text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors p-1 active:scale-90">
-            <!-- Sync Icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
-          </button>
+        <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-1">Signal Pass</h1>
+        <div class="flex items-center gap-2 mt-1">
+          <div id="pulse-dot" class="w-2 h-2 rounded-full bg-stone-400"></div>
+          <p id="status-text" class="text-[11px] font-mono text-stone-500 uppercase tracking-widest">Booting engine...</p>
         </div>
       </div>
       
-      <div class="text-left md:text-right">
-        <div id="date-display" class="text-sm font-mono font-bold text-stone-900 dark:text-stone-200"></div>
-        <div id="time-display" class="text-[10px] font-mono text-stone-500 dark:text-stone-400 tracking-widest mt-1"></div>
-      </div>
+      <button onclick="fetchFeeds(true)" id="sync-btn" class="active-press w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center text-stone-600 dark:text-stone-300">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+      </button>
     </header>
 
-    <!-- FILTERS -->
-    <nav class="flex gap-2 mb-10 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar" id="filter-container"></nav>
+    <!-- HORIZONTAL SCROLL CHIPS -->
+    <nav class="flex gap-2 mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar border-b border-stone-200 dark:border-stone-800" id="filter-container"></nav>
 
-    <!-- MAIN LAYOUT -->
-    <main class="space-y-12">
-      
-      <!-- THE RADAR -->
-      <section>
-        <div class="flex items-center gap-2 mb-4">
-          <div class="w-1.5 h-1.5 bg-stone-400 rotate-45"></div>
-          <h2 class="text-sm font-black tracking-widest text-stone-900 dark:text-stone-200 uppercase">The Radar</h2>
-          <div class="h-px bg-stone-200 dark:bg-stone-800 flex-1 ml-2"></div>
-        </div>
-        <div id="radar-container" class="bg-white dark:bg-[#111] border border-stone-200 dark:border-stone-800 rounded-xl p-4 sm:p-6 shadow-sm"></div>
-      </section>
-
-      <!-- THE WIRE -->
-      <section>
-        <div class="flex items-center gap-2 mb-4">
-          <div class="w-1.5 h-1.5 bg-stone-900 dark:bg-stone-400 rotate-45"></div>
-          <h2 class="text-sm font-black tracking-widest text-stone-900 dark:text-stone-200 uppercase">The Wire</h2>
-          <div class="h-px bg-stone-200 dark:bg-stone-800 flex-1 ml-2"></div>
-        </div>
-        <div id="wire-container" class="pl-2 sm:pl-4 border-l border-stone-200 dark:border-stone-800">
-          <!-- Populated by JS -->
-        </div>
-      </section>
-
+    <!-- MAIN DASHBOARD -->
+    <main id="dashboard-content" class="flex flex-col gap-0">
+      <!-- Skeleton Loading State -->
+      <div class="animate-pulse h-64 bg-stone-200 dark:bg-stone-900 rounded-3xl w-full mb-4"></div>
+      <div class="animate-pulse h-16 bg-stone-100 dark:bg-stone-900/50 rounded-xl w-full mb-2"></div>
+      <div class="animate-pulse h-16 bg-stone-100 dark:bg-stone-900/50 rounded-xl w-full mb-2"></div>
     </main>
+
   </div>
 
   <script>
@@ -89,15 +90,7 @@
     let currentFilter = 'Overview';
     let wireData = [];
     let isSyncing = false;
-
     const FILTERS = ['Overview', 'Auburn', 'MLB', 'PGA'];
-
-    const THE_RADAR = [
-      { sport: 'PGA Tour', category: 'PGA', title: 'RBC Heritage', time: 'ACTIVE', status: 'ACTIVE', context: 'Signature event underway at Harbour Town.' },
-      { sport: 'MLB', category: 'MLB', title: 'Early Season Standings Shift', time: 'DAILY', status: 'ACTIVE', context: 'Tracking divisional races.' },
-      { sport: 'Auburn Football', category: 'Auburn', title: 'A-Day Weekend', time: 'SATURDAY', status: 'PENDING', context: 'Spring game implementations.' },
-      { sport: 'Auburn Basketball', category: 'Auburn', title: 'Transfer Portal Action', time: 'ONGOING', status: 'ACTIVE', context: 'Roster building for 26-27.' }
-    ];
 
     // --- UTILITIES ---
     function getTimeAgo(dateString) {
@@ -113,126 +106,148 @@
       return `${Math.floor(diffHrs/24)}D AGO`;
     }
 
-    function getImpactLevel(title) {
+    function analyzeImpact(title) {
       const lower = title.toLowerCase();
-      if (lower.includes('injury') || lower.includes('trade') || lower.includes('championship') || lower.includes('portal') || lower.includes('transfer') || lower.includes('commits')) {
-        return { level: 'CRITICAL', classes: 'bg-red-600 text-white' };
+      if (lower.match(/(injury|trade|portal|transfer|commits|fires|hired|championship)/)) {
+        return { level: 'CRITICAL', color: 'text-red-500' };
       }
-      if (lower.includes('win') || lower.includes('lead') || lower.includes('signs') || lower.includes('draft') || lower.includes('rumor')) {
-        return { level: 'HIGH', classes: 'bg-orange-500 text-white' };
+      if (lower.match(/(win|lead|signs|draft|rumor|sweep|series)/)) {
+        return { level: 'HIGH', color: 'text-orange-500' };
       }
-      return { level: 'MED', classes: 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300' };
+      return { level: 'UPDATE', color: 'text-stone-400' };
     }
 
-    // --- RENDERING ---
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('date-display').innerText = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-      document.getElementById('time-display').innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
-    }
-
+    // --- RENDER PIPELINE ---
     function renderFilters() {
       const container = document.getElementById('filter-container');
       container.innerHTML = FILTERS.map(f => {
         const isActive = currentFilter === f;
         const classes = isActive 
-          ? 'bg-stone-900 dark:bg-stone-200 text-white dark:text-black border-stone-900 dark:border-stone-200 shadow-sm' 
-          : 'bg-white dark:bg-transparent text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-white';
-        return `<button onclick="setFilter('${f}')" class="text-xs font-mono tracking-widest uppercase px-3 py-1.5 rounded transition-all whitespace-nowrap border-2 ${classes} no-select">${f}</button>`;
+          ? 'text-black dark:text-white border-black dark:border-white font-semibold' 
+          : 'text-stone-500 dark:text-stone-500 border-transparent hover:text-stone-800 dark:hover:text-stone-300';
+        return `<button onclick="setFilter('${f}')" class="active-press text-sm px-3 py-2 border-b-2 transition-colors whitespace-nowrap no-select ${classes}">${f}</button>`;
       }).join('');
     }
 
-    function renderRadar() {
-      const container = document.getElementById('radar-container');
-      const filtered = THE_RADAR.filter(e => currentFilter === 'Overview' || e.category === currentFilter);
-      
-      if (filtered.length === 0) {
-        container.innerHTML = `<p class="text-sm text-stone-400 py-2 font-mono">No imminent radar signatures detected.</p>`;
-        return;
-      }
-
-      container.innerHTML = filtered.map(item => `
-        <div class="py-3 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 group border-b border-stone-100 dark:border-stone-800 last:border-0">
-          <div class="w-32 shrink-0 flex items-center gap-2">
-            ${item.status === 'ACTIVE' ? `
-              <span class="flex h-1.5 w-1.5 relative">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-              </span>
-            ` : ''}
-            <span class="text-[10px] font-mono tracking-wider ${item.status === 'ACTIVE' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-stone-400'}">${item.time}</span>
-          </div>
-          <div class="flex-1 mt-1 sm:mt-0">
-            <div class="flex items-center gap-2 mb-0.5">
-              <span class="text-[10px] font-mono text-stone-500 dark:text-stone-400 uppercase">${item.sport}</span>
-            </div>
-            <h4 class="text-sm font-semibold text-stone-900 dark:text-stone-100 leading-tight">${item.title}</h4>
-            <p class="text-xs text-stone-500 dark:text-stone-500 mt-0.5">${item.context}</p>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function renderWire() {
-      const container = document.getElementById('wire-container');
+    function renderDashboard() {
+      const container = document.getElementById('dashboard-content');
       const filtered = wireData.filter(e => currentFilter === 'Overview' || e.category === currentFilter);
-
-      if (isSyncing && wireData.length === 0) {
-        container.innerHTML = `<p class="text-sm text-stone-400 py-4 font-mono animate-pulse">Pulling latest signals...</p>`;
-        return;
-      }
+      
+      if (isSyncing && wireData.length === 0) return;
 
       if (filtered.length === 0) {
-        container.innerHTML = `<p class="text-sm text-stone-400 py-4 font-mono">Wire is silent. No recent news matching filter.</p>`;
+        container.innerHTML = `<div class="text-center py-12 text-sm text-stone-400 font-mono">Wire is silent. No signals detected.</div>`;
         return;
       }
 
-      container.innerHTML = filtered.map(item => {
-        const impact = getImpactLevel(item.title);
-        // Clean up Reddit titles (remove [Tags])
-        const cleanTitle = item.title.replace(/\[.*?\]/g, '').trim();
+      // The Bento Logic: First item is HERO, rest are DENSE WIRE
+      const heroItem = filtered[0];
+      const wireItems = filtered.slice(1);
 
-        return `
-          <div class="py-6 border-b border-stone-200 dark:border-stone-800 last:border-0 group">
-            <div class="flex flex-wrap items-center gap-3 mb-2">
-              <span class="text-[9px] font-bold tracking-widest px-1.5 py-0.5 rounded uppercase ${impact.classes}">${impact.level}</span>
-              <span class="text-[10px] font-mono tracking-wider text-stone-500 uppercase">${item.sport}</span>
-              <span class="text-[10px] font-mono text-stone-400 border-l border-stone-300 dark:border-stone-700 pl-3">${getTimeAgo(item.pubDate)}</span>
+      let html = '';
+
+      // --- 1. THE HERO CARD ---
+      const heroImpact = analyzeImpact(heroItem.title);
+      // Fallback subtle background if RSS feed failed to provide an image
+      const heroBg = heroItem.image ? `url('${heroItem.image}')` : `linear-gradient(135deg, #1f2937 0%, #111827 100%)`;
+      
+      html += `
+        <a href="https://www.google.com/search?q=${encodeURIComponent(heroItem.searchQuery)}" target="_blank" rel="noopener noreferrer" 
+           class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-6 block bg-stone-900 shadow-lg">
+          
+          <!-- Background Image -->
+          <div class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" 
+               style="background-image: ${heroBg};"></div>
+          
+          <!-- Dark Gradient Overlay for text readability -->
+          <div class="absolute inset-0 hero-gradient"></div>
+          
+          <!-- Content locked to the bottom -->
+          <div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/50 text-white backdrop-blur-md border border-white/10">
+                ${heroItem.sport}
+              </span>
+              <span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                ${getTimeAgo(heroItem.pubDate)}
+              </span>
             </div>
-            <h3 class="text-lg font-serif font-medium text-stone-900 dark:text-stone-100 leading-snug mb-2">${cleanTitle}</h3>
-            <a href="https://www.google.com/search?q=${encodeURIComponent(item.searchQuery)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-3 py-1.5 mt-2 rounded-md transition-colors active:scale-95">
-              <span>↳ Dig Deeper:</span>
-              <span class="underline decoration-blue-200 dark:decoration-blue-800 underline-offset-2 break-all line-clamp-1">${item.searchQuery}</span>
-            </a>
+            <h2 class="text-2xl sm:text-3xl font-serif font-medium leading-tight text-white mb-2 text-shadow-sm">
+              ${heroItem.title}
+            </h2>
           </div>
+        </a>
+      `;
+
+      // --- 2. THE DENSE WIRE ---
+      html += `<div class="flex flex-col">`;
+      
+      wireItems.forEach(item => {
+        const impact = analyzeImpact(item.title);
+        
+        // If the item has a thumbnail, show a tiny square image on the right. If not, just text.
+        const thumbnailHtml = item.image 
+          ? `<div class="shrink-0 ml-4 w-16 h-16 rounded-xl bg-stone-200 dark:bg-stone-800 bg-cover bg-center" style="background-image: url('${item.image}')"></div>`
+          : '';
+
+        html += `
+          <a href="https://www.google.com/search?q=${encodeURIComponent(item.searchQuery)}" target="_blank" rel="noopener noreferrer" 
+             class="active-press py-4 border-b border-stone-100 dark:border-stone-900 last:border-0 flex items-center justify-between group">
+            
+            <div class="flex-1 pr-4">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[9px] font-black uppercase tracking-widest ${impact.color}">${impact.level}</span>
+                <span class="text-stone-300 dark:text-stone-700 mx-1">•</span>
+                <span class="text-[10px] font-mono text-stone-500 uppercase tracking-wide">${item.sport}</span>
+              </div>
+              
+              <h3 class="text-[15px] sm:text-base font-medium leading-snug text-stone-900 dark:text-stone-100 group-hover:text-signal-accent transition-colors line-clamp-2">
+                ${item.title}
+              </h3>
+              
+              <div class="text-[10px] font-mono text-stone-400 mt-1.5">
+                ${getTimeAgo(item.pubDate)}
+              </div>
+            </div>
+            
+            ${thumbnailHtml}
+          </a>
         `;
-      }).join('');
+      });
+      
+      html += `</div>`;
+      container.innerHTML = html;
     }
 
-    // --- DATA FETCHING ---
     window.setFilter = (f) => {
       currentFilter = f;
       renderFilters();
-      renderRadar();
-      renderWire();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      renderDashboard();
     };
 
+    // --- DATA ENGINE (WITH IMAGE EXTRACTION) ---
     async function fetchFeeds(manual = false) {
       if (isSyncing) return;
       isSyncing = true;
       
-      const syncBtn = document.getElementById('sync-btn');
-      syncBtn.classList.add('animate-spin');
-      document.getElementById('status-text').innerText = 'SYNCING WIRE...';
+      const btn = document.getElementById('sync-btn');
+      const text = document.getElementById('status-text');
+      const dot = document.getElementById('pulse-dot');
       
-      // ESPN Official Feeds + Reddit RSS for Rumors
+      btn.classList.add('animate-spin');
+      dot.classList.replace('bg-emerald-500', 'bg-stone-400');
+      dot.classList.remove('animate-pulse');
+      text.innerText = 'SYNCING WIRE...';
+      
       const feeds = [
         { sport: 'MLB', category: 'MLB', url: 'https://www.espn.com/espn/rss/mlb/news' },
-        { sport: 'MLB Chatter', category: 'MLB', url: 'https://www.reddit.com/r/baseball/new/.rss' },
+        { sport: 'MLB', category: 'MLB', url: 'https://www.reddit.com/r/baseball/new/.rss' },
         { sport: 'PGA Tour', category: 'PGA', url: 'https://www.espn.com/espn/rss/golf/news' },
-        { sport: 'PGA Chatter', category: 'PGA', url: 'https://www.reddit.com/r/golf/new/.rss' },
-        { sport: 'Auburn Athletics', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncf/news' },
-        { sport: 'Auburn Rumors', category: 'Auburn', url: 'https://www.reddit.com/r/wde/new/.rss' }
+        { sport: 'Auburn', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncf/news' },
+        { sport: 'Auburn', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncb/news' },
+        { sport: 'Auburn', category: 'Auburn', url: 'https://www.reddit.com/r/wde/new/.rss' }
       ];
 
       let liveNews = [];
@@ -245,74 +260,88 @@
           if (data && data.items) {
             let items = data.items;
             
-            // Filter national college sports for Auburn/SEC relevance (ignore Reddit filter as it's already specific to r/wde)
-            if (feed.category === 'Auburn' && !feed.sport.includes('Rumors')) {
+            if (feed.category === 'Auburn' && !feed.url.includes('reddit')) {
               items = items.filter(item => {
-                const text = (item.title + ' ' + item.description).toLowerCase();
-                return text.includes('auburn') || text.includes('tigers') || text.includes('sec');
+                const searchTxt = (item.title + ' ' + item.description).toLowerCase();
+                return searchTxt.includes('auburn') || searchTxt.includes('tigers') || searchTxt.includes('sec');
               });
             }
 
-            // Remove useless stickied Reddit posts or match threads
-            if (feed.sport.includes('Chatter') || feed.sport.includes('Rumors')) {
+            if (feed.url.includes('reddit')) {
               items = items.filter(item => !item.title.toLowerCase().includes('game thread') && !item.title.toLowerCase().includes('weekly'));
             }
 
-            const parsed = items.slice(0, 8).map(item => ({
-              id: item.guid || item.link,
-              sport: feed.sport,
-              category: feed.category,
-              title: item.title,
-              pubDate: item.pubDate, 
-              searchQuery: `${item.title.replace(/\[.*?\]/g, '').trim()} ${feed.category} latest news`
-            }));
-            
+            const parsed = items.slice(0, 8).map(item => {
+              const cleanTitle = item.title.replace(/\[.*?\]/g, '').trim();
+              
+              // IMAGE EXTRACTION LOGIC
+              let imageUrl = null;
+              // Check standard rss2json thumbnail
+              if (item.thumbnail && item.thumbnail.startsWith('http')) {
+                imageUrl = item.thumbnail;
+              } 
+              // Check enclosure
+              else if (item.enclosure && item.enclosure.link && item.enclosure.link.startsWith('http')) {
+                imageUrl = item.enclosure.link;
+              } 
+              // Fallback: Check if there's an img tag hiding in the description
+              else if (item.description) {
+                const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+                if (imgMatch && imgMatch[1].startsWith('http')) {
+                   // Ignore tiny tracking pixels
+                   if (!imgMatch[1].includes('1x1')) {
+                     imageUrl = imgMatch[1];
+                   }
+                }
+              }
+
+              return {
+                id: item.guid || item.link,
+                sport: feed.sport,
+                category: feed.category,
+                title: cleanTitle,
+                pubDate: item.pubDate, 
+                image: imageUrl, // Storing extracted image
+                searchQuery: `${cleanTitle} ${feed.category} latest news`
+              };
+            });
             liveNews = [...liveNews, ...parsed];
           }
         } catch (err) {
-          console.warn(`Failed to fetch ${feed.sport} feed.`);
+          console.warn(`Feed error: ${feed.sport}`);
         }
       }
 
-      // Deduplicate by title and sort by date
       const uniqueMap = new Map();
       liveNews.forEach(item => uniqueMap.set(item.title, item));
-      const uniqueNews = Array.from(uniqueMap.values());
+      wireData = Array.from(uniqueMap.values()).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
       
-      wireData = uniqueNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-      
-      // CACHING: Save to local storage for instant loading next time
-      localStorage.setItem('lindyPassCache', JSON.stringify(wireData));
+      localStorage.setItem('signalPassCacheV4', JSON.stringify(wireData));
       
       isSyncing = false;
-      syncBtn.classList.remove('animate-spin');
-      document.getElementById('status-text').innerText = 'NOISE CANCELLED • HIGH DENSITY';
+      btn.classList.remove('animate-spin');
+      dot.classList.replace('bg-stone-400', 'bg-emerald-500');
+      dot.classList.add('animate-pulse');
+      text.innerText = 'LIVE NETWORK';
       
-      renderWire();
+      renderDashboard();
     }
 
     // --- INITIALIZATION ---
     function init() {
-      setInterval(updateClock, 1000);
-      updateClock();
       renderFilters();
-      renderRadar();
 
-      // Check for cached data for instant load
-      const cachedData = localStorage.getItem('lindyPassCache');
-      if (cachedData) {
+      const cached = localStorage.getItem('signalPassCacheV4');
+      if (cached) {
         try {
-          wireData = JSON.parse(cachedData);
-          document.getElementById('status-text').innerText = 'LOADING FRESH SIGNALS...';
-          renderWire();
-        } catch(e) { console.error('Cache read error'); }
+          wireData = JSON.parse(cached);
+          renderDashboard();
+          document.getElementById('status-text').innerText = 'PULLING FRESH DATA...';
+        } catch(e) {}
       }
 
-      // Fetch fresh data in the background
       fetchFeeds();
-
-      // Auto refresh feed every 15 minutes
-      setInterval(fetchFeeds, 15 * 60 * 1000);
+      setInterval(fetchFeeds, 10 * 60 * 1000); // 10 min auto-refresh
     }
 
     init();
