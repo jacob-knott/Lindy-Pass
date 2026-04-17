@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Signal Pass">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/1x1.png/120px-1x1.png">
   
-  <title>Signal Pass</title>
+  <title>Signal Pass Pro</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -23,11 +23,7 @@
             serif: ['ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif']
           },
           colors: {
-            signal: {
-              bg: '#F2F2F7', 
-              bgDark: '#000000',
-              accent: '#0A84FF'
-            }
+            signal: { bg: '#F2F2F7', bgDark: '#000000', accent: '#0A84FF' }
           }
         }
       }
@@ -38,17 +34,19 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .no-select { -webkit-user-select: none; user-select: none; }
-    
-    .active-press:active { transform: scale(0.98); opacity: 0.8; transition: all 0.1s; }
-    
-    .hero-gradient { background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.1) 100%); }
+    .active-press:active { transform: scale(0.96); opacity: 0.8; transition: all 0.1s; }
+    .hero-gradient { background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.1) 100%); }
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    /* Modal transitions */
+    #settings-modal[data-open="false"] { opacity: 0; pointer-events: none; transform: translateY(20px); }
+    #settings-modal[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateY(0); }
   </style>
 </head>
 <body class="bg-[#FFFFFF] dark:bg-[#000000] text-[#111] dark:text-[#F2F2F7] transition-colors duration-200 min-h-screen">
 
-  <div class="h-12 w-full sticky top-0 z-50 bg-[#FFFFFF]/80 dark:bg-[#000000]/80 backdrop-blur-xl md:hidden"></div>
+  <div class="h-12 w-full sticky top-0 z-40 bg-[#FFFFFF]/90 dark:bg-[#000000]/90 backdrop-blur-xl md:hidden"></div>
 
   <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-12 pb-24">
     
@@ -58,41 +56,80 @@
         <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-1">Signal Pass</h1>
         <div class="flex items-center gap-2 mt-1">
           <div id="pulse-dot" class="w-2 h-2 rounded-full bg-stone-400"></div>
-          <p id="status-text" class="text-[11px] font-mono text-stone-500 uppercase tracking-widest">Booting engine...</p>
+          <p id="status-text" class="text-[11px] font-mono text-stone-500 uppercase tracking-widest">Initializing...</p>
         </div>
       </div>
       
-      <button onclick="fetchFeeds(true)" id="sync-btn" class="active-press w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center text-stone-600 dark:text-stone-300">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
-      </button>
+      <div class="flex gap-2">
+        <button onclick="toggleSettings()" class="active-press w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center text-stone-600 dark:text-stone-300">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button onclick="fetchSignals(true)" id="sync-btn" class="active-press w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center text-stone-600 dark:text-stone-300">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+        </button>
+      </div>
     </header>
 
-    <!-- HORIZONTAL SCROLL CHIPS -->
+    <!-- HORIZONTAL SCROLL CHIPS (Now dynamically generated) -->
     <nav class="flex gap-2 mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar border-b border-stone-200 dark:border-stone-800" id="filter-container"></nav>
 
     <!-- MAIN DASHBOARD -->
     <main id="dashboard-content" class="flex flex-col gap-0">
-      <!-- Skeleton Loading State -->
       <div class="animate-pulse h-64 bg-stone-200 dark:bg-stone-900 rounded-[2rem] w-full mb-4"></div>
-      <div class="animate-pulse h-16 bg-stone-100 dark:bg-stone-900/50 rounded-xl w-full mb-2"></div>
       <div class="animate-pulse h-16 bg-stone-100 dark:bg-stone-900/50 rounded-xl w-full mb-2"></div>
     </main>
 
   </div>
 
+  <!-- SETTINGS MODAL (Personalization Engine) -->
+  <div id="settings-modal" data-open="false" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[80vh] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl overflow-hidden">
+      
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold tracking-tight">Your Signals</h2>
+        <button onclick="toggleSettings()" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex justify-center items-center active-press">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add the teams, players, or leagues you want tracked. The engine will instantly build a custom intelligence feed.</p>
+
+      <form id="add-topic-form" class="flex gap-2 mb-6">
+        <input type="text" id="new-topic-input" placeholder="e.g. Auburn Football, Max Verstappen" class="flex-1 bg-stone-100 dark:bg-[#2C2C2E] border border-transparent focus:border-signal-accent rounded-xl px-4 py-3 text-sm outline-none transition-colors dark:text-white placeholder-stone-400">
+        <button type="submit" class="bg-black dark:bg-white text-white dark:text-black px-4 rounded-xl font-medium text-sm active-press">Add</button>
+      </form>
+
+      <div class="flex-1 overflow-y-auto hide-scrollbar">
+        <div class="text-xs font-mono font-bold tracking-widest text-stone-400 uppercase mb-3">Active Feeds</div>
+        <div id="topics-list" class="flex flex-col gap-2 pb-8">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // --- STATE ---
+    // --- STATE & CORE CONFIG ---
     let currentFilter = 'Overview';
     let wireData = [];
     let isSyncing = false;
-    const FILTERS = ['Overview', 'Auburn', 'MLB', 'PGA'];
+    
+    // The "Personalization Engine" - Load custom user topics from memory or provide great defaults
+    const DEFAULT_TOPICS = ['Auburn Tigers', 'MLB', 'PGA Tour'];
+    let userTopics = JSON.parse(localStorage.getItem('signalPassTopics')) || DEFAULT_TOPICS;
 
-    // --- BRANDING UTILITIES (For Typographic Cards) ---
-    function getSportBrand(sport) {
-      if (sport === 'Auburn') return { from: '#0c2340', to: '#050f1c', accent: '#e87722' }; // Navy to deep black, Orange accent
-      if (sport === 'MLB') return { from: '#002D72', to: '#000000', accent: '#D50032' }; // Deep Blue to black, Red accent
-      if (sport === 'PGA') return { from: '#0a3a2a', to: '#000000', accent: '#F9E547' }; // Masters Green to black, Yellow accent
-      return { from: '#1f2937', to: '#000000', accent: '#3b82f6' }; // Generic Dark Gray
+    // A quick color hashing function to assign unique premium gradients to custom topics
+    function getTopicBrand(topicName) {
+      const charCode = topicName.charCodeAt(0) + topicName.charCodeAt(topicName.length - 1);
+      const palettes = [
+        { from: '#0c2340', to: '#050f1c', accent: '#e87722' }, // Navy/Orange
+        { from: '#002D72', to: '#000000', accent: '#D50032' }, // Blue/Red
+        { from: '#0a3a2a', to: '#000000', accent: '#F9E547' }, // Green/Yellow
+        { from: '#310000', to: '#000000', accent: '#ff4444' }, // Deep Red
+        { from: '#1a1a2e', to: '#000000', accent: '#a5b4fc' }, // Indigo
+        { from: '#231f20', to: '#000000', accent: '#ffffff' }, // Monochrome
+      ];
+      return palettes[charCode % palettes.length];
     }
 
     // --- UTILITIES ---
@@ -103,7 +140,7 @@
       const diffHrs = Math.floor(diffMins / 60);
 
       if (isNaN(diffMins)) return 'RECENTLY';
-      if (diffMins < 5) return 'JUST NOW';
+      if (diffMins < 10) return 'JUST NOW';
       if (diffMins < 60) return `${diffMins}M AGO`;
       if (diffHrs < 24) return `${diffHrs}H AGO`;
       return `${Math.floor(diffHrs/24)}D AGO`;
@@ -111,15 +148,60 @@
 
     function analyzeImpact(title) {
       const lower = title.toLowerCase();
-      if (lower.match(/(injury|trade|portal|transfer|commits|fires|hired|championship)/)) return { level: 'CRITICAL', color: 'text-red-500' };
-      if (lower.match(/(win|lead|signs|draft|rumor|sweep|series)/)) return { level: 'HIGH', color: 'text-orange-500' };
+      // Expanded heuristic engine for sports intelligence
+      if (lower.match(/(injury|torn|surgery|trade|fired|hired|commits|portal|transfer|suspended|investigation)/)) return { level: 'CRITICAL', color: 'text-red-500' };
+      if (lower.match(/(win|champion|lead|draft|signs|extension|rumor|sweep|record)/)) return { level: 'HIGH', color: 'text-orange-500' };
       return { level: 'UPDATE', color: 'text-stone-400' };
     }
+
+    // --- SETTINGS & PERSONALIZATION UI ---
+    function toggleSettings() {
+      const modal = document.getElementById('settings-modal');
+      const isOpen = modal.getAttribute('data-open') === 'true';
+      modal.setAttribute('data-open', !isOpen);
+      if (!isOpen) renderSettingsList();
+    }
+
+    function renderSettingsList() {
+      const list = document.getElementById('topics-list');
+      list.innerHTML = userTopics.map(topic => `
+        <div class="flex justify-between items-center bg-stone-50 dark:bg-[#2C2C2E] p-3 rounded-xl border border-stone-100 dark:border-stone-800">
+          <span class="font-medium text-sm">${topic}</span>
+          <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('add-topic-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('new-topic-input');
+      const val = input.value.trim();
+      if (val && !userTopics.includes(val)) {
+        userTopics.push(val);
+        localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+        input.value = '';
+        renderSettingsList();
+        fetchSignals(true); // Re-fetch immediately with new topic
+      }
+    });
+
+    window.removeTopic = (topic) => {
+      userTopics = userTopics.filter(t => t !== topic);
+      localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+      renderSettingsList();
+      
+      if (currentFilter === topic) currentFilter = 'Overview';
+      fetchSignals(true);
+    };
 
     // --- RENDER PIPELINE ---
     function renderFilters() {
       const container = document.getElementById('filter-container');
-      container.innerHTML = FILTERS.map(f => {
+      const activeFilters = ['Overview', ...userTopics];
+      
+      container.innerHTML = activeFilters.map(f => {
         const isActive = currentFilter === f;
         const classes = isActive 
           ? 'text-black dark:text-white border-black dark:border-white font-semibold' 
@@ -130,12 +212,12 @@
 
     function renderDashboard() {
       const container = document.getElementById('dashboard-content');
-      const filtered = wireData.filter(e => currentFilter === 'Overview' || e.category === currentFilter);
+      const filtered = wireData.filter(e => currentFilter === 'Overview' || e.topic === currentFilter);
       
       if (isSyncing && wireData.length === 0) return;
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center py-12 text-sm text-stone-400 font-mono">Wire is silent. No signals detected.</div>`;
+        container.innerHTML = `<div class="text-center py-12 text-sm text-stone-400 font-mono">No signals detected. Waiting for intelligence...</div>`;
         return;
       }
 
@@ -144,11 +226,10 @@
 
       let html = '';
 
-      // --- 1. THE HERO CARD (Dynamic Architecture) ---
+      // --- 1. THE HERO CARD ---
       if (heroItem.image) {
-        // RENDER: CINEMATIC IMAGE HERO
         html += `
-          <a href="https://www.google.com/search?q=${encodeURIComponent(heroItem.searchQuery)}" target="_blank" rel="noopener noreferrer" 
+          <a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" 
              class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-6 block bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800">
             <div class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" 
                  style="background-image: url('${heroItem.image}');"></div>
@@ -156,7 +237,7 @@
             <div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end">
               <div class="flex items-center gap-3 mb-3">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/50 text-white backdrop-blur-md border border-white/10">
-                  ${heroItem.sport}
+                  ${heroItem.topic}
                 </span>
                 <span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1">
                   <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -170,25 +251,22 @@
           </a>
         `;
       } else {
-        // RENDER: TYPOGRAPHIC PREMIUM HERO (No image available)
-        const brand = getSportBrand(heroItem.category);
+        const brand = getTopicBrand(heroItem.topic);
         html += `
-          <a href="https://www.google.com/search?q=${encodeURIComponent(heroItem.searchQuery)}" target="_blank" rel="noopener noreferrer" 
+          <a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" 
              class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-6 block shadow-sm border border-stone-200 dark:border-stone-800"
              style="background: linear-gradient(135deg, ${brand.from} 0%, ${brand.to} 100%);">
             
-            <!-- Massive Faint Watermark -->
-            <div class="absolute -right-10 -bottom-8 text-[120px] font-black text-white/[0.03] select-none tracking-tighter leading-none pointer-events-none">
-              ${heroItem.category.toUpperCase()}
+            <div class="absolute -right-4 -bottom-8 text-[100px] sm:text-[140px] font-black text-white/[0.04] select-none tracking-tighter leading-none pointer-events-none whitespace-nowrap">
+              ${heroItem.topic.toUpperCase()}
             </div>
             
-            <!-- Radial glow based on accent color -->
             <div class="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none" style="background-color: ${brand.accent};"></div>
 
             <div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end z-10">
               <div class="flex items-center gap-3 mb-3">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-white/10 text-white backdrop-blur-md border border-white/10">
-                  ${heroItem.sport}
+                  ${heroItem.topic}
                 </span>
                 <span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1">
                   <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -203,13 +281,11 @@
         `;
       }
 
-      // --- 2. THE DENSE WIRE (Rhythmic Layout) ---
+      // --- 2. THE DENSE WIRE ---
       html += `<div class="flex flex-col">`;
       
       wireItems.forEach(item => {
         const impact = analyzeImpact(item.title);
-        
-        // Conditional Thumbnail: Only render if image actually exists
         const thumbnailHtml = item.image ? `
           <div class="shrink-0 ml-4 w-20 h-20 rounded-xl bg-stone-200 dark:bg-stone-800 bg-cover bg-center border border-stone-100 dark:border-stone-800/50" 
                style="background-image: url('${item.image}')">
@@ -217,22 +293,24 @@
         ` : '';
 
         html += `
-          <a href="https://www.google.com/search?q=${encodeURIComponent(item.searchQuery)}" target="_blank" rel="noopener noreferrer" 
+          <a href="${item.link}" target="_blank" rel="noopener noreferrer" 
              class="active-press py-4 border-b border-stone-100 dark:border-stone-900 last:border-0 flex items-center justify-between group">
             
             <div class="flex-1 pr-2">
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="text-[9px] font-black uppercase tracking-widest ${impact.color}">${impact.level}</span>
                 <span class="text-stone-300 dark:text-stone-800 mx-1">•</span>
-                <span class="text-[10px] font-mono text-stone-500 uppercase tracking-wide">${item.sport}</span>
+                <span class="text-[10px] font-mono text-stone-500 uppercase tracking-wide truncate max-w-[120px]">${item.topic}</span>
               </div>
               
               <h3 class="text-[15px] sm:text-base font-medium leading-snug text-stone-900 dark:text-stone-100 group-hover:text-signal-accent transition-colors ${item.image ? 'line-clamp-2' : 'line-clamp-3'}">
                 ${item.title}
               </h3>
               
-              <div class="text-[10px] font-mono text-stone-400 mt-2">
-                ${getTimeAgo(item.pubDate)}
+              <div class="text-[10px] font-mono text-stone-400 mt-2 flex items-center gap-2">
+                <span>${getTimeAgo(item.pubDate)}</span>
+                <span class="text-stone-300 dark:text-stone-800 font-sans">•</span>
+                <span class="truncate">${item.source}</span>
               </div>
             </div>
             
@@ -252,8 +330,8 @@
       renderDashboard();
     };
 
-    // --- DATA ENGINE (Strict Extraction) ---
-    async function fetchFeeds(manual = false) {
+    // --- THE INTELLIGENCE ENGINE (Google News Aggregation & De-duping) ---
+    async function fetchSignals(manual = false) {
       if (isSyncing) return;
       isSyncing = true;
       
@@ -264,80 +342,74 @@
       btn.classList.add('animate-spin');
       dot.classList.replace('bg-emerald-500', 'bg-stone-400');
       dot.classList.remove('animate-pulse');
-      text.innerText = 'SYNCING WIRE...';
+      text.innerText = 'GATHERING INTEL...';
       
-      const feeds = [
-        { sport: 'MLB', category: 'MLB', url: 'https://www.espn.com/espn/rss/mlb/news' },
-        { sport: 'MLB', category: 'MLB', url: 'https://www.reddit.com/r/baseball/new/.rss' },
-        { sport: 'PGA Tour', category: 'PGA', url: 'https://www.espn.com/espn/rss/golf/news' },
-        { sport: 'Auburn', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncf/news' },
-        { sport: 'Auburn', category: 'Auburn', url: 'https://www.espn.com/espn/rss/ncb/news' },
-        { sport: 'Auburn', category: 'Auburn', url: 'https://www.reddit.com/r/wde/new/.rss' }
-      ];
+      renderFilters(); // Ensure tabs are up to date
+      
+      let allSignals = [];
 
-      let liveNews = [];
-
-      for (let feed of feeds) {
+      // We use Google News RSS via RSS2JSON proxy. This gives us thousands of sources instantly.
+      // We append "when:1d" to force it to only show news from the last 24 hours.
+      for (let topic of userTopics) {
         try {
-          const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`);
+          const query = encodeURIComponent(`${topic} when:1d`);
+          const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
+          
+          const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
           const data = await res.json();
           
           if (data && data.items) {
-            let items = data.items;
-            
-            if (feed.category === 'Auburn' && !feed.url.includes('reddit')) {
-              items = items.filter(item => {
-                const searchTxt = (item.title + ' ' + item.description).toLowerCase();
-                return searchTxt.includes('auburn') || searchTxt.includes('tigers') || searchTxt.includes('sec');
-              });
-            }
+            const parsed = data.items.map(item => {
+              // Google News titles are usually "Headline - Source". We split it.
+              const titleParts = item.title.split(' - ');
+              const source = titleParts.pop(); 
+              const cleanTitle = titleParts.join(' - ').trim();
 
-            if (feed.url.includes('reddit')) {
-              items = items.filter(item => !item.title.toLowerCase().includes('game thread') && !item.title.toLowerCase().includes('weekly'));
-            }
-
-            const parsed = items.slice(0, 8).map(item => {
-              const cleanTitle = item.title.replace(/\[.*?\]/g, '').trim();
-              
-              // STRICT IMAGE EXTRACTION
+              // Google News rarely provides good images in RSS, but we try anyway
               let extractedImage = null;
-              
-              // Only accept high-quality images, reject tiny tracking pixels or generic avatars
-              const isValidImage = (url) => url && url.startsWith('http') && !url.includes('default') && !url.includes('self') && !url.includes('1x1') && !url.includes('avatar');
-
-              if (isValidImage(item.thumbnail)) {
-                extractedImage = item.thumbnail;
-              } else if (item.enclosure && isValidImage(item.enclosure.link)) {
-                extractedImage = item.enclosure.link;
-              } else if (item.description) {
+              if (item.description) {
                 const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
-                if (imgMatch && isValidImage(imgMatch[1])) {
+                if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) {
                    extractedImage = imgMatch[1];
                 }
               }
 
               return {
-                id: item.guid || item.link,
-                sport: feed.sport,
-                category: feed.category,
+                id: item.guid,
+                topic: topic,
+                source: source,
                 title: cleanTitle,
                 pubDate: item.pubDate, 
-                image: extractedImage, // Will be null if no real image exists
-                searchQuery: `${cleanTitle} ${feed.category} latest news`
+                image: extractedImage,
+                link: item.link
               };
             });
-            liveNews = [...liveNews, ...parsed];
+            allSignals = [...allSignals, ...parsed];
           }
         } catch (err) {
-          console.warn(`Feed error: ${feed.sport}`);
+          console.warn(`Failed to gather intel for: ${topic}`);
         }
       }
 
-      const uniqueMap = new Map();
-      liveNews.forEach(item => uniqueMap.set(item.title, item));
-      wireData = Array.from(uniqueMap.values()).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+      // --- THE DE-DUPLICATION ALGORITHM (Noise Canceling) ---
+      // We check if the first 30 characters of a headline match another one to kill generic wire duplicates.
+      const uniqueSignals = [];
+      const titleSignatures = new Set();
       
-      localStorage.setItem('signalPassCacheV5', JSON.stringify(wireData));
+      // Sort newest first
+      allSignals.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+      allSignals.forEach(signal => {
+        // Create a simplified string to catch slight headline variations (lowercase, remove punctuation)
+        const signature = signal.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').substring(0, 35);
+        if (!titleSignatures.has(signature)) {
+          titleSignatures.add(signature);
+          uniqueSignals.push(signal);
+        }
+      });
+      
+      wireData = uniqueSignals;
+      localStorage.setItem('signalPassV6', JSON.stringify(wireData));
       
       isSyncing = false;
       btn.classList.remove('animate-spin');
@@ -349,17 +421,16 @@
     }
 
     function init() {
-      renderFilters();
-      const cached = localStorage.getItem('signalPassCacheV5');
+      const cached = localStorage.getItem('signalPassV6');
       if (cached) {
         try {
           wireData = JSON.parse(cached);
           renderDashboard();
-          document.getElementById('status-text').innerText = 'PULLING FRESH DATA...';
+          document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...';
         } catch(e) {}
       }
-      fetchFeeds();
-      setInterval(fetchFeeds, 10 * 60 * 1000); 
+      fetchSignals();
+      setInterval(fetchSignals, 15 * 60 * 1000); // 15 min auto-refresh
     }
 
     init();
