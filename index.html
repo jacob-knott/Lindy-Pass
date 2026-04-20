@@ -79,11 +79,11 @@
     <!-- THE DUAL-VITALS RIBBON -->
     <div id="vitals-container" class="mb-4 min-h-[32px] flex flex-col justify-center transition-opacity duration-300"></div>
 
-    <!-- UNIVERSAL SYNTHESIS ACTION -->
+    <!-- UNIVERSAL SYNTHESIS ACTION (The AI Handoff) -->
     <div id="synthesis-action-container" class="mb-6 hidden">
-      <button onclick="triggerSynthesis(currentFilter)" class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-signal-accent/10 dark:bg-signal-accent/20 border border-signal-accent/20 text-signal-accent active-press transition-colors shadow-sm">
+      <button onclick="triggerSynthesis(currentFilter)" class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-signal-accent/10 to-purple-500/10 dark:from-signal-accent/20 dark:to-purple-500/20 border border-signal-accent/20 text-signal-accent dark:text-blue-400 active-press transition-colors shadow-sm">
         <div class="flex items-center gap-2">
-          <svg class="animate-pulse" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          <svg class="animate-pulse text-purple-500 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
           <span class="text-[11px] font-mono font-bold tracking-widest uppercase">Generate Topic Synthesis</span>
         </div>
         <span class="text-sm font-bold leading-none">↗</span>
@@ -98,26 +98,60 @@
 
   </div>
 
-  <!-- SYNTHESIS BRIEFING SHEET -->
+  <!-- AI ROUTING DOSSIER (The Solution) -->
   <div id="synthesis-modal" class="modal-hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
-    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[500px] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl border border-stone-200 dark:border-stone-800 max-h-[85vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-6">
+    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[500px] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl border border-stone-200 dark:border-stone-800 max-h-[90vh] overflow-hidden">
+      
+      <div class="flex justify-between items-center mb-4 shrink-0">
         <div class="flex items-center gap-2">
-          <svg class="text-signal-accent" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-          <h2 class="text-xl font-bold tracking-tight">Signal Synthesis</h2>
+          <svg class="text-purple-500" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          <h2 class="text-xl font-bold tracking-tight">Intelligence Dossier</h2>
         </div>
         <button onclick="closeSynthesisModal()" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex justify-center items-center active-press">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
       
-      <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-6 border-b border-stone-100 dark:border-stone-800 pb-2 flex justify-between items-center">
-        <span>Target: <span id="synthesis-topic-name" class="text-stone-900 dark:text-stone-200 font-bold"></span></span>
-        <span class="text-signal-accent font-bold">● META-ANALYSIS</span>
+      <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-4 border-b border-stone-100 dark:border-stone-800 pb-2 shrink-0">
+        Target: <span id="synthesis-topic-name" class="text-stone-900 dark:text-stone-200 font-bold"></span>
       </div>
 
-      <div id="synthesis-content-area" class="text-stone-800 dark:text-stone-200">
-        <!-- Additive Meta-Data injected here -->
+      <div class="flex-1 overflow-y-auto hide-scrollbar pb-4">
+        
+        <!-- Deep Context Routing (AI Handoff) -->
+        <div class="mb-6">
+          <h3 class="text-xs font-bold uppercase tracking-widest text-stone-900 dark:text-stone-100 mb-3">1. Deep Context (Live AI)</h3>
+          <p class="text-sm text-stone-500 dark:text-stone-400 mb-3 leading-snug">Generate a comprehensive executive briefing on the current status, roster updates, and storylines using your preferred AI engine.</p>
+          
+          <div class="flex flex-col gap-2">
+            <button onclick="launchAI('perplexity')" class="active-press flex items-center justify-between px-4 py-3 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-black font-semibold text-sm transition-transform shadow-sm">
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Synthesize with Perplexity
+              </div>
+              <span class="opacity-50 text-xs">↗</span>
+            </button>
+            
+            <button onclick="launchAI('chatgpt')" class="active-press flex items-center justify-between px-4 py-3 rounded-xl bg-stone-100 dark:bg-[#2C2C2E] text-stone-900 dark:text-white font-semibold text-sm transition-transform border border-stone-200 dark:border-stone-700">
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Synthesize with ChatGPT
+              </div>
+              <span class="opacity-50 text-xs">↗</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="h-px w-full bg-stone-100 dark:bg-stone-800 mb-6"></div>
+
+        <!-- Raw Expanded Intel -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-widest text-stone-900 dark:text-stone-100 mb-3">2. Raw Intel (Quick Read)</h3>
+          <div id="synthesis-content-area" class="flex flex-col gap-4">
+            <!-- Expanded descriptions injected here -->
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -190,96 +224,39 @@
       return { level: 'UPDATE', color: 'text-stone-500 dark:text-stone-400' };
     }
 
-    // --- ADDITIVE ON-DEVICE SYNTHESIS ENGINE (Meta-Data Analytics) ---
+    // --- AI ROUTING ENGINE (The Deep Context Handoff) ---
     function triggerSynthesis(topic) {
       const modal = document.getElementById('synthesis-modal');
       const titleEl = document.getElementById('synthesis-topic-name');
       const contentEl = document.getElementById('synthesis-content-area');
       
+      const targetTopic = topic === 'Overview' ? 'the major sports landscape' : topic;
       titleEl.innerText = topic;
       
-      // Filter our existing wire data for this topic
-      const topicData = topic === 'Overview' ? wireData : wireData.filter(e => e.topic === topic);
+      // Store the active topic so the buttons know what to route
+      modal.setAttribute('data-active-topic', targetTopic);
 
-      if (topicData.length < 2) {
-        contentEl.innerHTML = `<p class="text-sm text-stone-500">Insufficient signal volume to generate meta-synthesis. Waiting for more data.</p>`;
+      // Part 2: Extract the Raw Intel for the Quick Read section
+      const topicData = topic === 'Overview' ? wireData.slice(0, 5) : wireData.filter(e => e.topic === topic).slice(0, 4);
+
+      if (topicData.length === 0) {
+        contentEl.innerHTML = `<p class="text-sm text-stone-500 italic">No expanded intelligence available in the current cycle.</p>`;
       } else {
-        // 1. IMPACT/THREAT ANALYSIS
-        let critical = 0, high = 0, update = 0;
+        let intelHtml = '';
         topicData.forEach(item => {
-           const impact = analyzeImpact(item.title).level;
-           if (impact === 'CRITICAL') critical++;
-           else if (impact === 'HIGH') high++;
-           else update++;
-        });
-
-        // 2. VELOCITY ANALYSIS
-        const newest = new Date(topicData[0].pubDate);
-        const oldest = new Date(topicData[topicData.length-1].pubDate);
-        const hrsDiff = Math.max(1, Math.round((newest - oldest) / (1000 * 60 * 60)));
-        const velocityRate = topicData.length / hrsDiff;
-        let velocityText = 'Stable';
-        let velocityColor = 'text-stone-500';
-        if (velocityRate >= 1.5) { velocityText = 'Surging'; velocityColor = 'text-signal-accent'; }
-        else if (velocityRate >= 0.5) { velocityText = 'Active'; velocityColor = 'text-stone-900 dark:text-stone-100'; }
-
-        let threatText = `<span class="text-stone-500 font-bold">Standard</span>`;
-        if (critical > 0) threatText = `<span class="text-red-500 font-bold">Elevated (${critical} Critical)</span>`;
-        else if (high > 0) threatText = `<span class="text-orange-500 font-bold">Active (${high} High)</span>`;
-
-        // 3. TRENDING ENTITY EXTRACTION (Named Entity Recognition)
-        // Ignoring generic words and the topic name itself
-        const topicWords = topic.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ');
-        const ignoreWords = [...topicWords, 'the', 'and', 'for', 'with', 'new', 'update', 'latest', 'news', 'vs', 'game', 'over', 'from', 'after'];
-        
-        const entityCounts = {};
-        // Regex to find two capitalized words next to each other (e.g. "Bobby Witt", "Hugh Freeze")
-        const regex = /([A-Z][a-z]+ [A-Z][a-z]+)/g;
-
-        topicData.forEach(item => {
-           const text = item.title + " " + (item.snippet || "");
-           let match;
-           while ((match = regex.exec(text)) !== null) {
-              const entity = match[1];
-              const entityLower = entity.toLowerCase();
-              // Validate it doesn't contain ignore words
-              if (!ignoreWords.some(w => entityLower.includes(w))) {
-                 entityCounts[entity] = (entityCounts[entity] || 0) + 1;
-              }
-           }
-        });
-
-        const sortedEntities = Object.entries(entityCounts)
-           .sort((a,b) => b[1] - a[1])
-           .slice(0, 5)
-           .filter(e => e[1] > 1); // Only show if mentioned more than once
-
-        let entitiesHtml = sortedEntities.length > 0
-          ? sortedEntities.map(e => `<span class="inline-block px-3 py-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg text-sm font-medium mr-2 mb-2 border border-stone-200 dark:border-stone-700">${e[0]} <span class="opacity-50 text-xs ml-1">${e[1]} signals</span></span>`).join('')
-          : `<span class="text-sm text-stone-500 italic">Conversations are broad; no dominant subjects isolated.</span>`;
-
-        // Render the Additive Dashboard
-        contentEl.innerHTML = `
-          <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="bg-[#F2F2F7] dark:bg-[#1C1C1E] p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-center">
-              <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-1">Signal Velocity</div>
-              <div class="font-bold text-xl ${velocityColor} leading-tight">${velocityText}</div>
-              <div class="text-[11px] text-stone-500 mt-1">${topicData.length} signals tracked over ${hrsDiff}h</div>
-            </div>
-            <div class="bg-[#F2F2F7] dark:bg-[#1C1C1E] p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-center">
-              <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-1">Threat Level</div>
-              <div class="text-xl leading-tight">${threatText}</div>
-              <div class="text-[11px] text-stone-500 mt-1">${high} High, ${update} Standard</div>
-            </div>
-          </div>
+          // Use the snippet if it exists and is meaningful, otherwise fallback to title
+          const textBody = item.snippet && item.snippet.length > 30 ? item.snippet : "No extended briefing available for this signal.";
+          const cleanText = textBody.length > 200 ? textBody.substring(0, 200) + '...' : textBody;
           
-          <div>
-            <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-3 border-b border-stone-100 dark:border-stone-800 pb-2">Trending Subjects</div>
-            <div class="flex flex-wrap pt-1">
-              ${entitiesHtml}
+          intelHtml += `
+            <div class="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-xl border border-stone-200 dark:border-stone-800">
+              <h4 class="font-bold text-sm leading-tight text-stone-900 dark:text-stone-100 mb-1.5">${item.title}</h4>
+              <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed mb-2">${cleanText}</p>
+              <div class="text-[10px] font-mono text-stone-400 uppercase tracking-wide">Via ${item.source}</div>
             </div>
-          </div>
-        `;
+          `;
+        });
+        contentEl.innerHTML = intelHtml;
       }
       
       modal.classList.remove('modal-hidden');
@@ -292,6 +269,19 @@
       modal.classList.add('modal-hidden');
     }
 
+    // THE MAGIC: Routing the optimized prompt to the AI engines via deep linking
+    window.launchAI = (engine) => {
+      const topic = document.getElementById('synthesis-modal').getAttribute('data-active-topic');
+      const prompt = `Act as a sports analyst. Give me a dense, bulleted executive briefing on the latest news, roster updates, current record/standings, and top storylines for ${topic}.`;
+      const encodedPrompt = encodeURIComponent(prompt);
+      
+      let url = '';
+      if (engine === 'perplexity') url = `https://www.perplexity.ai/search?q=${encodedPrompt}`;
+      else if (engine === 'chatgpt') url = `https://chatgpt.com/?q=${encodedPrompt}`;
+      
+      window.open(url, '_blank');
+    };
+
     // --- LIVE SCORE TELEMETRY & TARGETED ROUTING ---
     function getExpandedDateParams() {
       const d = new Date();
@@ -301,12 +291,13 @@
       return `?dates=${yest.getFullYear()}${pad(yest.getMonth()+1)}${pad(yest.getDate())}-${tom.getFullYear()}${pad(tom.getMonth()+1)}${pad(tom.getDate())}&limit=100`;
     }
 
+    // UPDATED FALLBACK: Triggers the Intelligence Dossier instead of a Google Search
     const getFallbackVitalsHTML = (topic) => `
-      <a href="https://www.google.com/search?q=${encodeURIComponent(topic + ' scores standings record')}" target="_blank" 
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M21 3l-9 9-4-4-6 6"/></svg>
-        View Live Vitals & Standings ↗
-      </a>
+      <button onclick="triggerSynthesis('${topic}')" 
+         class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[11px] font-mono text-purple-600 dark:text-purple-400 font-bold tracking-widest uppercase">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        Open Intelligence Dossier
+      </button>
     `;
 
     async function checkLiveGames(topicName) {
@@ -388,7 +379,7 @@
       const container = document.getElementById('vitals-container');
       const actionContainer = document.getElementById('synthesis-action-container');
       
-      // Show the Synthesis action button for every view
+      // Ensure Synthesis button is visible for every tab
       actionContainer.classList.remove('hidden');
       
       if (currentFilter === 'Overview') {
@@ -652,7 +643,8 @@
             if (item.description) {
               const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
               if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
-              cleanSnippet = item.description.replace(/<[^>]+>/g, '').trim();
+              // Extract raw text for the Quick Read dossier
+              cleanSnippet = item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
             }
 
             return { 
@@ -673,14 +665,14 @@
         if (!titleSignatures.has(signature)) { titleSignatures.add(signature); uniqueSignals.push(signal); }
       });
       
-      wireData = uniqueSignals; localStorage.setItem('signalPassV11', JSON.stringify(wireData));
+      wireData = uniqueSignals; localStorage.setItem('signalPassV11_1', JSON.stringify(wireData));
       
       isSyncing = false; btn.classList.remove('animate-spin'); dot.classList.replace('bg-stone-400', 'bg-emerald-500'); dot.classList.add('animate-pulse'); text.innerText = 'LIVE NETWORK';
       renderDashboard();
     }
 
     function init() {
-      const cached = localStorage.getItem('signalPassV11');
+      const cached = localStorage.getItem('signalPassV11_1');
       if (cached) { try { wireData = JSON.parse(cached); renderFilters(); renderVitals(); renderDashboard(); document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...'; } catch(e) {} }
       fetchSignals(); setInterval(fetchSignals, 15 * 60 * 1000);
     }
