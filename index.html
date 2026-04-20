@@ -1,4 +1,4 @@
-```h<<!doctype html>
+<!doctype html>
 <html lang="en" class="antialiased">
 <head>
   <meta charset="UTF-8" />
@@ -12,6 +12,9 @@
   <title>Signal Pass Pro</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SortableJS for flawless mobile touch drag & drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  
   <script>
     tailwind.config = {
       darkMode: 'media',
@@ -41,6 +44,10 @@
     
     #settings-modal[data-open="false"] { opacity: 0; pointer-events: none; transform: translateY(20px); }
     #settings-modal[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    
+    /* Drag & Drop Styles */
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-drag { cursor: grabbing !important; }
   </style>
 </head>
 <body class="bg-[#FFFFFF] dark:bg-[#000000] text-[#111] dark:text-[#F2F2F7] transition-colors duration-200 min-h-screen">
@@ -73,9 +80,7 @@
     <nav class="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar" id="filter-container"></nav>
 
     <!-- THE VITALS RIBBON -->
-    <div id="vitals-container" class="mb-6 min-h-[32px] flex flex-col justify-center transition-opacity duration-300">
-      <!-- Populated dynamically -->
-    </div>
+    <div id="vitals-container" class="mb-6 min-h-[32px] flex flex-col justify-center transition-opacity duration-300"></div>
 
     <!-- MAIN DASHBOARD -->
     <main id="dashboard-content" class="flex flex-col gap-0">
@@ -94,11 +99,13 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
-      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add the teams, players, or leagues you want tracked.</p>
-      <form id="add-topic-form" class="flex gap-2 mb-6">
-        <input type="text" id="new-topic-input" placeholder="e.g. Royals, Max Verstappen" class="flex-1 bg-stone-100 dark:bg-[#2C2C2E] border border-transparent focus:border-signal-accent rounded-xl px-4 py-3 text-sm outline-none transition-colors dark:text-white placeholder-stone-400">
+      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add teams or drag the grip icon (⋮⋮) to prioritize your feed order.</p>
+      
+      <form id="add-topic-form" class="flex gap-2 mb-6 shrink-0">
+        <input type="text" id="new-topic-input" placeholder="e.g. Royals, F1, Auburn" class="flex-1 bg-stone-100 dark:bg-[#2C2C2E] border border-transparent focus:border-signal-accent rounded-xl px-4 py-3 text-sm outline-none transition-colors dark:text-white placeholder-stone-400">
         <button type="submit" class="bg-black dark:bg-white text-white dark:text-black px-4 rounded-xl font-medium text-sm active-press">Add</button>
       </form>
+      
       <div class="flex-1 overflow-y-auto hide-scrollbar">
         <div class="text-xs font-mono font-bold tracking-widest text-stone-400 uppercase mb-3">Active Feeds</div>
         <div id="topics-list" class="flex flex-col gap-2 pb-8"></div>
@@ -111,6 +118,7 @@
     let wireData = [];
     let isSyncing = false;
     let mlbStandingsCache = null;
+    let sortableInstance = null;
     
     const DEFAULT_TOPICS = ['Kansas City Royals', 'Auburn Tigers', 'PGA Tour'];
     let userTopics = JSON.parse(localStorage.getItem('signalPassTopics')) || DEFAULT_TOPICS;
@@ -145,14 +153,13 @@
       return { level: 'UPDATE', color: 'text-stone-400' };
     }
 
-    // --- STRICT LIVE SCORE TELEMETRY ---
+    // --- LIVE SCORE TELEMETRY & STANDINGS ---
     async function checkLiveGames(topicName) {
       const endpoints = [
         'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
         'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
         'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard'
       ];
-      
       const topicLower = topicName.toLowerCase();
 
       for (let url of endpoints) {
@@ -163,18 +170,12 @@
 
           for (let event of data.events) {
             if (!event.competitions || !event.competitions[0]) continue;
-            
             const comp = event.competitions[0];
             
-            // STRICT MATCHING: Check if the user's topic matches the exact team name, abbreviation, or contains all necessary words
             const isMatch = comp.competitors.some(c => {
-               const fullName = c.team.displayName.toLowerCase(); // e.g. "auburn tigers"
-               const abbrev = c.team.abbreviation.toLowerCase(); // e.g. "aub"
-               
+               const fullName = c.team.displayName.toLowerCase(); 
+               const abbrev = c.team.abbreviation.toLowerCase(); 
                if (fullName === topicLower || abbrev === topicLower) return true;
-               
-               // If user typed "Auburn Tigers", make sure ALL words are in the team's full name
-               // This prevents "Auburn Tigers" from matching "Detroit Tigers"
                const searchTerms = topicLower.split(' ').filter(w => w.length > 1);
                return searchTerms.length > 0 && searchTerms.every(term => fullName.includes(term) || abbrev === term);
             });
@@ -201,7 +202,6 @@
       return null;
     }
 
-    // --- STRICT MLB STANDINGS MATCHER ---
     async function loadMLBStandings() {
       if (mlbStandingsCache) return mlbStandingsCache;
       try {
@@ -221,7 +221,6 @@
       } catch (err) { return null; }
     }
 
-    // --- VITALS RENDERER ---
     async function renderVitals() {
       const container = document.getElementById('vitals-container');
       
@@ -233,7 +232,6 @@
       container.innerHTML = `<div class="animate-pulse h-8 w-48 bg-stone-100 dark:bg-stone-900 rounded-lg"></div>`;
 
       try {
-        // 1. LIVE GAME OVERRIDE
         const liveGame = await checkLiveGames(currentFilter);
         if (liveGame) {
           const isLive = liveGame.isLive;
@@ -261,17 +259,10 @@
           return; 
         }
 
-        // 2. STANDINGS (Strict Matching)
         const mlbTeams = await loadMLBStandings();
         if (mlbTeams) {
           const query = currentFilter.toLowerCase();
-          
-          // Only match if the MLB team name ends with the query (e.g. "Royals" -> "Kansas City Royals")
-          // Or starts with it. This prevents "Auburn Tigers" from matching "Detroit Tigers".
-          const matchedTeam = Object.keys(mlbTeams).find(t => 
-             t === query || t.endsWith(" " + query) || t.startsWith(query + " ")
-          );
-          
+          const matchedTeam = Object.keys(mlbTeams).find(t => t === query || t.endsWith(" " + query) || t.startsWith(query + " "));
           if (matchedTeam) {
             const stats = mlbTeams[matchedTeam];
             let standingText = `${stats.rank}${stats.rank == 1 ? 'ST' : stats.rank == 2 ? 'ND' : stats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
@@ -293,7 +284,6 @@
           }
         }
 
-        // 3. FALLBACK
         container.innerHTML = `
           <a href="https://www.google.com/search?q=${encodeURIComponent(currentFilter + ' scores standings record')}" target="_blank" 
              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
@@ -306,18 +296,44 @@
       }
     }
 
-    // --- PIPELINE LOGIC ---
+    // --- PIPELINE LOGIC WITH DRAG & DROP ---
+    function renderSettingsList() {
+      const list = document.getElementById('topics-list');
+      list.innerHTML = userTopics.map(topic => `
+        <div data-topic="${topic}" class="topic-item flex justify-between items-center bg-stone-50 dark:bg-[#2C2C2E] p-3 rounded-xl border border-stone-100 dark:border-stone-800">
+          <div class="flex items-center gap-3">
+            <div class="drag-handle text-stone-300 dark:text-stone-500 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+            </div>
+            <span class="font-medium text-sm select-none">${topic}</span>
+          </div>
+          <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      `).join('');
+
+      // Initialize SortableJS
+      if (sortableInstance) sortableInstance.destroy();
+      sortableInstance = new Sortable(list, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: function (evt) {
+          const items = list.querySelectorAll('.topic-item');
+          userTopics = Array.from(items).map(item => item.getAttribute('data-topic'));
+          localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+          renderFilters(); // Instantly update horizontal chips when dropped
+        }
+      });
+    }
+
     function toggleSettings() {
       const modal = document.getElementById('settings-modal');
       const isOpen = modal.getAttribute('data-open') === 'true';
       modal.setAttribute('data-open', !isOpen);
       if (!isOpen) {
-        document.getElementById('topics-list').innerHTML = userTopics.map(topic => `
-          <div class="flex justify-between items-center bg-stone-50 dark:bg-[#2C2C2E] p-3 rounded-xl border border-stone-100 dark:border-stone-800">
-            <span class="font-medium text-sm">${topic}</span>
-            <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-          </div>
-        `).join('');
+        renderSettingsList();
       }
     }
 
@@ -326,15 +342,22 @@
       const input = document.getElementById('new-topic-input');
       const val = input.value.trim();
       if (val && !userTopics.includes(val)) {
-        userTopics.push(val); localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-        input.value = ''; toggleSettings(); setFilter(val); fetchSignals(true);
+        userTopics.push(val); 
+        localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+        input.value = ''; 
+        renderSettingsList(); 
+        setFilter(val); 
+        fetchSignals(true);
       }
     });
 
     window.removeTopic = (topic) => {
       userTopics = userTopics.filter(t => t !== topic);
       localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-      toggleSettings(); if (currentFilter === topic) setFilter('Overview'); fetchSignals(true);
+      renderSettingsList(); 
+      if (currentFilter === topic) setFilter('Overview'); 
+      renderFilters();
+      fetchSignals(true);
     };
 
     window.setFilter = (f) => {
