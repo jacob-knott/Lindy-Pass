@@ -40,8 +40,8 @@
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     
-    #settings-modal[data-open="false"] { opacity: 0; pointer-events: none; transform: translateY(20px); }
-    #settings-modal[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .modal-hidden { opacity: 0; pointer-events: none; transform: translateY(20px); }
+    .modal-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
     
     .sortable-ghost { opacity: 0.4; }
     .sortable-drag { cursor: grabbing !important; }
@@ -53,7 +53,7 @@
 
   <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-12 pb-24">
     
-    <!-- EXECUTIVE HEADER -->
+    <!-- APP HEADER -->
     <header class="mb-6 flex justify-between items-end">
       <div>
         <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-1">Signal Pass</h1>
@@ -77,7 +77,18 @@
     <nav class="flex gap-4 mb-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar" id="filter-container"></nav>
 
     <!-- THE DUAL-VITALS RIBBON -->
-    <div id="vitals-container" class="mb-6 min-h-[32px] flex flex-col justify-center transition-opacity duration-300"></div>
+    <div id="vitals-container" class="mb-4 min-h-[32px] flex flex-col justify-center transition-opacity duration-300"></div>
+
+    <!-- UNIVERSAL SYNTHESIS ACTION -->
+    <div id="synthesis-action-container" class="mb-6 hidden">
+      <button onclick="triggerSynthesis(currentFilter)" class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-signal-accent/10 dark:bg-signal-accent/20 border border-signal-accent/20 text-signal-accent active-press transition-colors shadow-sm">
+        <div class="flex items-center gap-2">
+          <svg class="animate-pulse" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          <span class="text-[11px] font-mono font-bold tracking-widest uppercase">Generate Topic Synthesis</span>
+        </div>
+        <span class="text-sm font-bold leading-none">↗</span>
+      </button>
+    </div>
 
     <!-- MAIN DASHBOARD -->
     <main id="dashboard-content" class="flex flex-col gap-0">
@@ -87,18 +98,42 @@
 
   </div>
 
-  <!-- SETTINGS MODAL -->
-  <div id="settings-modal" data-open="false" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
-    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[80vh] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl overflow-hidden">
+  <!-- SYNTHESIS BRIEFING SHEET -->
+  <div id="synthesis-modal" class="modal-hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[500px] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl border border-stone-200 dark:border-stone-800 max-h-[85vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold tracking-tight">Your Signals</h2>
+        <div class="flex items-center gap-2">
+          <svg class="text-signal-accent" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          <h2 class="text-xl font-bold tracking-tight">Signal Synthesis</h2>
+        </div>
+        <button onclick="closeSynthesisModal()" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex justify-center items-center active-press">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      
+      <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-6 border-b border-stone-100 dark:border-stone-800 pb-2 flex justify-between items-center">
+        <span>Target: <span id="synthesis-topic-name" class="text-stone-900 dark:text-stone-200 font-bold"></span></span>
+        <span class="text-signal-accent font-bold">● META-ANALYSIS</span>
+      </div>
+
+      <div id="synthesis-content-area" class="text-stone-800 dark:text-stone-200">
+        <!-- Additive Meta-Data injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="modal-hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+    <div class="bg-white dark:bg-[#1C1C1E] w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl p-6 flex flex-col shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold tracking-tight">Settings</h2>
         <button onclick="toggleSettings()" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex justify-center items-center active-press">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
-      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add teams or drag the grip icon (⋮⋮) to prioritize your feed order.</p>
       
-      <form id="add-topic-form" class="flex gap-2 mb-6 shrink-0">
+      <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Add teams or drag the grip icon (⋮⋮) to prioritize your feed order.</p>
+      <form id="add-topic-form" class="flex gap-2 mb-4 shrink-0">
         <input type="text" id="new-topic-input" placeholder="e.g. Royals, F1, Auburn" class="flex-1 bg-stone-100 dark:bg-[#2C2C2E] border border-transparent focus:border-signal-accent rounded-xl px-4 py-3 text-sm outline-none transition-colors dark:text-white placeholder-stone-400">
         <button type="submit" class="bg-black dark:bg-white text-white dark:text-black px-4 rounded-xl font-medium text-sm active-press">Add</button>
       </form>
@@ -155,8 +190,109 @@
       return { level: 'UPDATE', color: 'text-stone-500 dark:text-stone-400' };
     }
 
+    // --- ADDITIVE ON-DEVICE SYNTHESIS ENGINE (Meta-Data Analytics) ---
+    function triggerSynthesis(topic) {
+      const modal = document.getElementById('synthesis-modal');
+      const titleEl = document.getElementById('synthesis-topic-name');
+      const contentEl = document.getElementById('synthesis-content-area');
+      
+      titleEl.innerText = topic;
+      
+      // Filter our existing wire data for this topic
+      const topicData = topic === 'Overview' ? wireData : wireData.filter(e => e.topic === topic);
+
+      if (topicData.length < 2) {
+        contentEl.innerHTML = `<p class="text-sm text-stone-500">Insufficient signal volume to generate meta-synthesis. Waiting for more data.</p>`;
+      } else {
+        // 1. IMPACT/THREAT ANALYSIS
+        let critical = 0, high = 0, update = 0;
+        topicData.forEach(item => {
+           const impact = analyzeImpact(item.title).level;
+           if (impact === 'CRITICAL') critical++;
+           else if (impact === 'HIGH') high++;
+           else update++;
+        });
+
+        // 2. VELOCITY ANALYSIS
+        const newest = new Date(topicData[0].pubDate);
+        const oldest = new Date(topicData[topicData.length-1].pubDate);
+        const hrsDiff = Math.max(1, Math.round((newest - oldest) / (1000 * 60 * 60)));
+        const velocityRate = topicData.length / hrsDiff;
+        let velocityText = 'Stable';
+        let velocityColor = 'text-stone-500';
+        if (velocityRate >= 1.5) { velocityText = 'Surging'; velocityColor = 'text-signal-accent'; }
+        else if (velocityRate >= 0.5) { velocityText = 'Active'; velocityColor = 'text-stone-900 dark:text-stone-100'; }
+
+        let threatText = `<span class="text-stone-500 font-bold">Standard</span>`;
+        if (critical > 0) threatText = `<span class="text-red-500 font-bold">Elevated (${critical} Critical)</span>`;
+        else if (high > 0) threatText = `<span class="text-orange-500 font-bold">Active (${high} High)</span>`;
+
+        // 3. TRENDING ENTITY EXTRACTION (Named Entity Recognition)
+        // Ignoring generic words and the topic name itself
+        const topicWords = topic.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ');
+        const ignoreWords = [...topicWords, 'the', 'and', 'for', 'with', 'new', 'update', 'latest', 'news', 'vs', 'game', 'over', 'from', 'after'];
+        
+        const entityCounts = {};
+        // Regex to find two capitalized words next to each other (e.g. "Bobby Witt", "Hugh Freeze")
+        const regex = /([A-Z][a-z]+ [A-Z][a-z]+)/g;
+
+        topicData.forEach(item => {
+           const text = item.title + " " + (item.snippet || "");
+           let match;
+           while ((match = regex.exec(text)) !== null) {
+              const entity = match[1];
+              const entityLower = entity.toLowerCase();
+              // Validate it doesn't contain ignore words
+              if (!ignoreWords.some(w => entityLower.includes(w))) {
+                 entityCounts[entity] = (entityCounts[entity] || 0) + 1;
+              }
+           }
+        });
+
+        const sortedEntities = Object.entries(entityCounts)
+           .sort((a,b) => b[1] - a[1])
+           .slice(0, 5)
+           .filter(e => e[1] > 1); // Only show if mentioned more than once
+
+        let entitiesHtml = sortedEntities.length > 0
+          ? sortedEntities.map(e => `<span class="inline-block px-3 py-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg text-sm font-medium mr-2 mb-2 border border-stone-200 dark:border-stone-700">${e[0]} <span class="opacity-50 text-xs ml-1">${e[1]} signals</span></span>`).join('')
+          : `<span class="text-sm text-stone-500 italic">Conversations are broad; no dominant subjects isolated.</span>`;
+
+        // Render the Additive Dashboard
+        contentEl.innerHTML = `
+          <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-[#F2F2F7] dark:bg-[#1C1C1E] p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-center">
+              <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-1">Signal Velocity</div>
+              <div class="font-bold text-xl ${velocityColor} leading-tight">${velocityText}</div>
+              <div class="text-[11px] text-stone-500 mt-1">${topicData.length} signals tracked over ${hrsDiff}h</div>
+            </div>
+            <div class="bg-[#F2F2F7] dark:bg-[#1C1C1E] p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-center">
+              <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-1">Threat Level</div>
+              <div class="text-xl leading-tight">${threatText}</div>
+              <div class="text-[11px] text-stone-500 mt-1">${high} High, ${update} Standard</div>
+            </div>
+          </div>
+          
+          <div>
+            <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest mb-3 border-b border-stone-100 dark:border-stone-800 pb-2">Trending Subjects</div>
+            <div class="flex flex-wrap pt-1">
+              ${entitiesHtml}
+            </div>
+          </div>
+        `;
+      }
+      
+      modal.classList.remove('modal-hidden');
+      modal.classList.add('modal-visible');
+    }
+
+    function closeSynthesisModal() {
+      const modal = document.getElementById('synthesis-modal');
+      modal.classList.remove('modal-visible');
+      modal.classList.add('modal-hidden');
+    }
+
     // --- LIVE SCORE TELEMETRY & TARGETED ROUTING ---
-    
     function getExpandedDateParams() {
       const d = new Date();
       const yest = new Date(d); yest.setDate(d.getDate() - 1);
@@ -176,40 +312,13 @@
     async function checkLiveGames(topicName) {
       const dateParams = getExpandedDateParams();
       const topicLower = topicName.toLowerCase();
-      
-      // 1. TARGETED ROUTING (Fixing the Cross-Contamination Bug)
       let endpoints = [];
-      const isFootball = topicLower.includes('football');
-      const isBasketball = topicLower.includes('basketball');
-      const isBaseball = topicLower.includes('baseball') || topicLower.includes('mlb');
-
-      if (isFootball) {
-        endpoints = [
-          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${dateParams}`
-        ];
-      } else if (isBasketball) {
-        endpoints = [
-          `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard${dateParams}`
-        ];
-      } else if (isBaseball) {
-        endpoints = [
-          `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`
-        ];
-      } else {
-        // Fallback: if no specific sport is mentioned, search all major ones
-        endpoints = [
-          `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`,
-          `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`
-        ];
-      }
       
-      // 2. KEYWORD STRIPPER
-      // Strips out generic sports words so "Auburn" correctly matches "Auburn Tigers" in the API
+      if (topicLower.includes('football')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${dateParams}`];
+      else if (topicLower.includes('basketball')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard${dateParams}`];
+      else if (topicLower.includes('baseball') || topicLower.includes('mlb')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`];
+      else endpoints = [`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`];
+      
       const cleanTopic = topicLower.replace(/\b(football|basketball|baseball|mens|womens|tour|athletics|mlb|nba|nfl)\b/g, '').trim();
       const searchTerms = cleanTopic.split(' ').filter(w => w.length > 1);
 
@@ -218,7 +327,6 @@
           const res = await fetch(url);
           const data = await res.json();
           if (!data.events) return [];
-          
           return data.events.filter(event => {
             if (!event.competitions || !event.competitions[0]) return false;
             return event.competitions[0].competitors.some(c => {
@@ -232,18 +340,11 @@
 
       const resultsArrays = await Promise.all(fetchPromises);
       const matchedEvents = resultsArrays.flat();
-
       if (matchedEvents.length === 0) return null;
 
       let bestEvent = matchedEvents.find(e => e.status.type.state === 'in');
-      if (!bestEvent) {
-        const preGames = matchedEvents.filter(e => e.status.type.state === 'pre').sort((a,b) => new Date(a.date) - new Date(b.date));
-        if (preGames.length > 0) bestEvent = preGames[0];
-      }
-      if (!bestEvent) {
-        const postGames = matchedEvents.filter(e => e.status.type.state === 'post').sort((a,b) => new Date(b.date) - new Date(a.date));
-        if (postGames.length > 0) bestEvent = postGames[0];
-      }
+      if (!bestEvent) bestEvent = matchedEvents.filter(e => e.status.type.state === 'pre').sort((a,b) => new Date(a.date) - new Date(b.date))[0];
+      if (!bestEvent) bestEvent = matchedEvents.filter(e => e.status.type.state === 'post').sort((a,b) => new Date(b.date) - new Date(a.date))[0];
 
       if (bestEvent) {
         const comp = bestEvent.competitions[0];
@@ -252,11 +353,8 @@
         const status = bestEvent.status.type.state;
         
         let detail = bestEvent.status.type.detail;
-        if (status === 'pre') {
-          detail = `NEXT • ${new Date(bestEvent.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}`;
-        } else if (status === 'post') {
-          detail = 'FINAL';
-        }
+        if (status === 'pre') detail = `NEXT • ${new Date(bestEvent.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}`;
+        else if (status === 'post') detail = 'FINAL';
 
         return {
           isLive: status === 'in', isPre: status === 'pre', isPost: status === 'post', statusDetail: detail,
@@ -286,9 +384,12 @@
       } catch (err) { return null; }
     }
 
-    // --- DUAL-VITALS RENDERER ---
     async function renderVitals() {
       const container = document.getElementById('vitals-container');
+      const actionContainer = document.getElementById('synthesis-action-container');
+      
+      // Show the Synthesis action button for every view
+      actionContainer.classList.remove('hidden');
       
       if (currentFilter === 'Overview') {
         container.innerHTML = `<div class="text-[10px] font-mono tracking-widest text-stone-400 uppercase pb-1">Top Global Signals</div>`;
@@ -298,10 +399,7 @@
       container.innerHTML = `<div class="animate-pulse h-8 w-48 bg-stone-100 dark:bg-stone-900 rounded-lg"></div>`;
 
       try {
-        const [liveGame, mlbTeams] = await Promise.all([
-          checkLiveGames(currentFilter),
-          loadMLBStandings()
-        ]);
+        const [liveGame, mlbTeams] = await Promise.all([ checkLiveGames(currentFilter), loadMLBStandings() ]);
 
         let matchedStats = null;
         if (mlbTeams) {
@@ -314,12 +412,10 @@
         const renderGameRow = (game) => {
           const awayDisplay = game.isPre ? game.away.name : `${game.away.name} ${game.away.score || '0'}`;
           const homeDisplay = game.isPre ? game.home.name : `${game.home.name} ${game.home.score || '0'}`;
-          const separator = game.isPre ? '@' : '-';
-          
           return `
             <div class="flex items-center gap-2">
               <span class="${game.isPost && game.away.score < game.home.score ? 'opacity-50' : ''}">${awayDisplay}</span>
-              <span class="opacity-40 px-1">${separator}</span>
+              <span class="opacity-40 px-1">${game.isPre ? '@' : '-'}</span>
               <span class="${game.isPost && game.home.score < game.away.score ? 'opacity-50' : ''}">${homeDisplay}</span>
             </div>
           `;
@@ -329,11 +425,8 @@
           const isLive = liveGame.isLive;
           const gameBg = isLive ? 'bg-red-50 dark:bg-red-900/20' : 'bg-[#F2F2F7] dark:bg-[#1C1C1E] hover:bg-stone-200 dark:hover:bg-stone-800';
           const textClass = isLive ? 'text-red-700 dark:text-red-400' : 'text-stone-800 dark:text-stone-200';
-          const indicator = isLive 
-            ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>`
-            : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
-
-          let standingText = `${matchedStats.rank}${matchedStats.rank == 1 ? 'ST' : matchedStats.rank == 2 ? 'ND' : matchedStats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
+          const indicator = isLive ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>` : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
+          const standingText = `${matchedStats.rank}${['ST','ND','RD'][matchedStats.rank-1] || 'TH'} IN DIV`;
           const gbText = matchedStats.gb !== '-' ? `(${matchedStats.gb} GB)` : '';
 
           container.innerHTML = `
@@ -342,20 +435,15 @@
                 ${indicator}
                 <div class="flex items-center justify-between w-full text-[12px] font-mono font-bold tracking-widest uppercase ${textClass} whitespace-nowrap">
                   ${renderGameRow(liveGame)}
-                  <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">
-                    ${liveGame.statusDetail}
-                  </div>
+                  <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">${liveGame.statusDetail}</div>
                 </div>
               </a>
               <div class="h-px w-full bg-stone-200 dark:bg-stone-800"></div>
               <div class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-[#111]">
                 <div class="w-1.5 h-1.5 shrink-0 opacity-0"></div> 
                 <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[10px] font-mono font-bold tracking-widest uppercase text-stone-600 dark:text-stone-400 whitespace-nowrap">
-                  <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span>
-                  <span class="text-stone-300 dark:text-stone-700">|</span>
-                  <span>${standingText} ${gbText}</span>
-                  <span class="text-stone-300 dark:text-stone-700">|</span>
-                  <span>STREAK: ${matchedStats.streak}</span>
+                  <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span><span class="text-stone-300 dark:text-stone-700">|</span>
+                  <span>${standingText} ${gbText}</span><span class="text-stone-300 dark:text-stone-700">|</span><span>STREAK: ${matchedStats.streak}</span>
                 </div>
               </div>
             </div>
@@ -367,18 +455,14 @@
           const isLive = liveGame.isLive;
           const bgClass = isLive ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50' : 'bg-[#F2F2F7] dark:bg-[#1C1C1E] border-stone-200 dark:border-stone-800';
           const textClass = isLive ? 'text-red-700 dark:text-red-400' : 'text-stone-800 dark:text-stone-200';
-          const indicator = isLive 
-            ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>`
-            : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
+          const indicator = isLive ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>` : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
 
           container.innerHTML = `
             <a href="${liveGame.link}" target="_blank" class="active-press flex items-center gap-3 px-3 py-2 rounded-lg border shadow-sm w-full overflow-hidden transition-colors ${bgClass}">
               ${indicator}
               <div class="flex items-center justify-between w-full text-[12px] font-mono font-bold tracking-widest uppercase ${textClass} whitespace-nowrap">
                 ${renderGameRow(liveGame)}
-                <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">
-                  ${liveGame.statusDetail}
-                </div>
+                <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">${liveGame.statusDetail}</div>
               </div>
             </a>
           `;
@@ -386,18 +470,15 @@
         }
 
         if (matchedStats) {
-          let standingText = `${matchedStats.rank}${matchedStats.rank == 1 ? 'ST' : matchedStats.rank == 2 ? 'ND' : matchedStats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
+          const standingText = `${matchedStats.rank}${['ST','ND','RD'][matchedStats.rank-1] || 'TH'} IN DIV`;
           const gbText = matchedStats.gb !== '-' ? `(${matchedStats.gb} GB)` : '';
 
           container.innerHTML = `
             <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-stone-200 dark:border-stone-800 shadow-sm w-full overflow-hidden">
               <div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>
               <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[11px] font-mono font-bold tracking-widest uppercase text-stone-800 dark:text-stone-200 whitespace-nowrap">
-                <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>${standingText} ${gbText}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>STREAK: ${matchedStats.streak}</span>
+                <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span><span class="text-stone-300 dark:text-stone-700">|</span>
+                <span>${standingText} ${gbText}</span><span class="text-stone-300 dark:text-stone-700">|</span><span>STREAK: ${matchedStats.streak}</span>
               </div>
             </div>
           `;
@@ -427,9 +508,7 @@
 
       if (sortableInstance) sortableInstance.destroy();
       sortableInstance = new Sortable(list, {
-        handle: '.drag-handle',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
+        handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost',
         onEnd: function () {
           const items = list.querySelectorAll('.topic-item');
           userTopics = Array.from(items).map(item => item.getAttribute('data-topic'));
@@ -441,9 +520,15 @@
 
     function toggleSettings() {
       const modal = document.getElementById('settings-modal');
-      const isOpen = modal.getAttribute('data-open') === 'true';
-      modal.setAttribute('data-open', !isOpen);
-      if (!isOpen) renderSettingsList();
+      const isHidden = modal.classList.contains('modal-hidden');
+      if (isHidden) {
+        renderSettingsList();
+        modal.classList.remove('modal-hidden');
+        modal.classList.add('modal-visible');
+      } else {
+        modal.classList.remove('modal-visible');
+        modal.classList.add('modal-hidden');
+      }
     }
 
     document.getElementById('add-topic-form').addEventListener('submit', (e) => {
@@ -541,7 +626,7 @@
       container.innerHTML = html + `</div>`;
     }
 
-    // --- CONCURRENT INTELLIGENCE ENGINE ---
+    // --- CONCURRENT DATA GATHERING ---
     async function fetchSignals(manual = false) {
       if (isSyncing) return;
       isSyncing = true;
@@ -560,12 +645,20 @@
 
           return data.items.map(item => {
             const titleParts = item.title.split(' - '); const source = titleParts.pop(); const cleanTitle = titleParts.join(' - ').trim();
+            
             let extImg = null;
+            let cleanSnippet = "";
+            
             if (item.description) {
               const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
               if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
+              cleanSnippet = item.description.replace(/<[^>]+>/g, '').trim();
             }
-            return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg, link: item.link };
+
+            return { 
+              id: item.guid, topic: topic, source: source, title: cleanTitle, 
+              pubDate: item.pubDate, image: extImg, link: item.link, snippet: cleanSnippet 
+            };
           });
         } catch (err) { return []; }
       });
@@ -580,14 +673,14 @@
         if (!titleSignatures.has(signature)) { titleSignatures.add(signature); uniqueSignals.push(signal); }
       });
       
-      wireData = uniqueSignals; localStorage.setItem('signalPassV9_4', JSON.stringify(wireData));
+      wireData = uniqueSignals; localStorage.setItem('signalPassV11', JSON.stringify(wireData));
       
       isSyncing = false; btn.classList.remove('animate-spin'); dot.classList.replace('bg-stone-400', 'bg-emerald-500'); dot.classList.add('animate-pulse'); text.innerText = 'LIVE NETWORK';
       renderDashboard();
     }
 
     function init() {
-      const cached = localStorage.getItem('signalPassV9_4');
+      const cached = localStorage.getItem('signalPassV11');
       if (cached) { try { wireData = JSON.parse(cached); renderFilters(); renderVitals(); renderDashboard(); document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...'; } catch(e) {} }
       fetchSignals(); setInterval(fetchSignals, 15 * 60 * 1000);
     }
