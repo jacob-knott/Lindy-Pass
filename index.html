@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="en" class="antialiased">
 <head>
@@ -72,9 +73,9 @@
     <!-- HORIZONTAL SCROLL CHIPS -->
     <nav class="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar" id="filter-container"></nav>
 
-    <!-- THE NEW VITALS RIBBON -->
-    <div id="vitals-container" class="mb-6 h-8 flex items-center transition-opacity duration-300">
-      <!-- Populated dynamically based on tab -->
+    <!-- THE VITALS RIBBON -->
+    <div id="vitals-container" class="mb-6 min-h-[32px] flex flex-col justify-center transition-opacity duration-300">
+      <!-- Populated dynamically -->
     </div>
 
     <!-- MAIN DASHBOARD -->
@@ -94,7 +95,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
-      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add the teams, players, or leagues you want tracked. The engine will instantly build a custom intelligence feed.</p>
+      <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Add the teams, players, or leagues you want tracked.</p>
       <form id="add-topic-form" class="flex gap-2 mb-6">
         <input type="text" id="new-topic-input" placeholder="e.g. Royals, Max Verstappen" class="flex-1 bg-stone-100 dark:bg-[#2C2C2E] border border-transparent focus:border-signal-accent rounded-xl px-4 py-3 text-sm outline-none transition-colors dark:text-white placeholder-stone-400">
         <button type="submit" class="bg-black dark:bg-white text-white dark:text-black px-4 rounded-xl font-medium text-sm active-press">Add</button>
@@ -119,10 +120,9 @@
     function getTopicBrand(topicName) {
       const charCode = topicName.charCodeAt(0) + topicName.charCodeAt(topicName.length - 1);
       const palettes = [
-        { from: '#004687', to: '#000000', accent: '#bd9b60' }, // Royals Blue/Gold
+        { from: '#004687', to: '#000000', accent: '#bd9b60' }, // Royals
         { from: '#0c2340', to: '#050f1c', accent: '#e87722' }, // Auburn
         { from: '#0a3a2a', to: '#000000', accent: '#F9E547' }, // PGA
-        { from: '#310000', to: '#000000', accent: '#ff4444' }, 
         { from: '#1a1a2e', to: '#000000', accent: '#a5b4fc' },
       ];
       return palettes[charCode % palettes.length];
@@ -146,92 +146,168 @@
       return { level: 'UPDATE', color: 'text-stone-400' };
     }
 
-    // --- THE VITALS ENGINE ---
+    // --- STRICT LIVE SCORE TELEMETRY ---
+    async function checkLiveGames(topicName) {
+      const endpoints = [
+        'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+        'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard'
+      ];
+      
+      const topicLower = topicName.toLowerCase();
+
+      for (let url of endpoints) {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (!data.events) continue;
+
+          for (let event of data.events) {
+            if (!event.competitions || !event.competitions[0]) continue;
+            
+            const comp = event.competitions[0];
+            
+            // STRICT MATCHING: Check if the user's topic matches the exact team name, abbreviation, or contains all necessary words
+            const isMatch = comp.competitors.some(c => {
+               const fullName = c.team.displayName.toLowerCase(); // e.g. "auburn tigers"
+               const abbrev = c.team.abbreviation.toLowerCase(); // e.g. "aub"
+               
+               if (fullName === topicLower || abbrev === topicLower) return true;
+               
+               // If user typed "Auburn Tigers", make sure ALL words are in the team's full name
+               // This prevents "Auburn Tigers" from matching "Detroit Tigers"
+               const searchTerms = topicLower.split(' ').filter(w => w.length > 1);
+               return searchTerms.length > 0 && searchTerms.every(term => fullName.includes(term) || abbrev === term);
+            });
+            
+            if (isMatch) {
+              const awayTeam = comp.competitors.find(c => c.homeAway === 'away');
+              const homeTeam = comp.competitors.find(c => c.homeAway === 'home');
+              const status = event.status.type.state;
+              const detail = event.status.type.detail;
+
+              return {
+                isLive: status === 'in',
+                isPre: status === 'pre',
+                isPost: status === 'post',
+                statusDetail: detail,
+                away: { name: awayTeam.team.abbreviation, score: awayTeam.score },
+                home: { name: homeTeam.team.abbreviation, score: homeTeam.score },
+                link: event.links.find(l => l.rel.includes('desktop'))?.href || `https://www.espn.com/search/_/q/${encodeURIComponent(topicName)}`
+              };
+            }
+          }
+        } catch(e) { }
+      }
+      return null;
+    }
+
+    // --- STRICT MLB STANDINGS MATCHER ---
     async function loadMLBStandings() {
       if (mlbStandingsCache) return mlbStandingsCache;
       try {
-        // Fetching live data directly from MLB's open stats API
         const res = await fetch('https://statsapi.mlb.com/api/v1/standings?leagueId=103,104');
         const data = await res.json();
         const teams = {};
-        
         data.records.forEach(division => {
           division.teamRecords.forEach(teamData => {
-            const name = teamData.team.name.toLowerCase();
-            teams[name] = {
-              wins: teamData.wins,
-              losses: teamData.losses,
-              rank: teamData.divisionRank,
-              streak: teamData.streak ? teamData.streak.streakCode : '-',
-              gb: teamData.gamesBack || '0'
+            teams[teamData.team.name.toLowerCase()] = {
+              wins: teamData.wins, losses: teamData.losses, rank: teamData.divisionRank, 
+              streak: teamData.streak ? teamData.streak.streakCode : '-', gb: teamData.gamesBack || '0'
             };
           });
         });
         mlbStandingsCache = teams;
         return teams;
-      } catch (err) {
-        return null;
-      }
+      } catch (err) { return null; }
     }
 
+    // --- VITALS RENDERER ---
     async function renderVitals() {
       const container = document.getElementById('vitals-container');
       
       if (currentFilter === 'Overview') {
-        container.innerHTML = `<div class="text-[10px] font-mono tracking-widest text-stone-400 uppercase">Top Global Signals</div>`;
+        container.innerHTML = `<div class="text-[10px] font-mono tracking-widest text-stone-400 uppercase pb-1">Top Global Signals</div>`;
         return;
       }
 
-      // Default Level 1 State: The Context Deep Link
-      let vitalsHtml = `
-        <a href="https://www.google.com/search?q=${encodeURIComponent(currentFilter + ' standings record stats')}" target="_blank" 
-           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M21 3l-9 9-4-4-6 6"/></svg>
-          View Live Vitals & Standings ↗
-        </a>
-      `;
-      container.innerHTML = vitalsHtml; // Show default while checking APIs
+      container.innerHTML = `<div class="animate-pulse h-8 w-48 bg-stone-100 dark:bg-stone-900 rounded-lg"></div>`;
 
-      // Level 2 State: Live API Check for MLB Teams
-      const mlbTeams = await loadMLBStandings();
-      if (mlbTeams) {
-        const query = currentFilter.toLowerCase();
-        // Check if the user's typed string matches any MLB team name
-        const matchedTeam = Object.keys(mlbTeams).find(t => t.includes(query) || query.includes(t.split(' ').pop()));
-        
-        if (matchedTeam) {
-          const stats = mlbTeams[matchedTeam];
-          
-          let standingText = `${stats.rank}`;
-          if(stats.rank == 1) standingText += `ST IN DIV`;
-          else if(stats.rank == 2) standingText += `ND IN DIV`;
-          else if(stats.rank == 3) standingText += `RD IN DIV`;
-          else standingText += `TH IN DIV`;
+      try {
+        // 1. LIVE GAME OVERRIDE
+        const liveGame = await checkLiveGames(currentFilter);
+        if (liveGame) {
+          const isLive = liveGame.isLive;
+          const bgClass = isLive ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50' : 'bg-[#F2F2F7] dark:bg-[#1C1C1E] border-stone-200 dark:border-stone-800';
+          const textClass = isLive ? 'text-red-700 dark:text-red-400' : 'text-stone-800 dark:text-stone-200';
+          const indicator = isLive 
+            ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>`
+            : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0"></div>`;
 
-          const gbText = stats.gb !== '-' ? `(${stats.gb} GB)` : '';
-
-          // Injecting live MLB stats directly into the UI!
           container.innerHTML = `
-            <div class="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-stone-200 dark:border-stone-800 shadow-sm w-full overflow-hidden">
-              <span class="flex h-1.5 w-1.5 relative shrink-0">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-              </span>
-              
-              <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[11px] font-mono font-bold tracking-widest uppercase text-stone-800 dark:text-stone-200 whitespace-nowrap">
-                <span class="text-signal-accent">${stats.wins}-${stats.losses}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>${standingText} ${gbText}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>STREAK: ${stats.streak}</span>
+            <a href="${liveGame.link}" target="_blank" class="active-press flex items-center gap-3 px-3 py-2 rounded-lg border shadow-sm w-full overflow-hidden transition-colors ${bgClass}">
+              ${indicator}
+              <div class="flex items-center justify-between w-full text-[12px] font-mono font-bold tracking-widest uppercase ${textClass} whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <span class="${liveGame.away.score > liveGame.home.score ? '' : 'opacity-70'}">${liveGame.away.name} ${liveGame.away.score || ''}</span>
+                  <span class="opacity-40">-</span>
+                  <span class="${liveGame.home.score > liveGame.away.score ? '' : 'opacity-70'}">${liveGame.home.name} ${liveGame.home.score || ''}</span>
+                </div>
+                <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">
+                  ${liveGame.statusDetail}
+                </div>
               </div>
-            </div>
+            </a>
           `;
+          return; 
         }
+
+        // 2. STANDINGS (Strict Matching)
+        const mlbTeams = await loadMLBStandings();
+        if (mlbTeams) {
+          const query = currentFilter.toLowerCase();
+          
+          // Only match if the MLB team name ends with the query (e.g. "Royals" -> "Kansas City Royals")
+          // Or starts with it. This prevents "Auburn Tigers" from matching "Detroit Tigers".
+          const matchedTeam = Object.keys(mlbTeams).find(t => 
+             t === query || t.endsWith(" " + query) || t.startsWith(query + " ")
+          );
+          
+          if (matchedTeam) {
+            const stats = mlbTeams[matchedTeam];
+            let standingText = `${stats.rank}${stats.rank == 1 ? 'ST' : stats.rank == 2 ? 'ND' : stats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
+            const gbText = stats.gb !== '-' ? `(${stats.gb} GB)` : '';
+
+            container.innerHTML = `
+              <div class="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-stone-200 dark:border-stone-800 shadow-sm w-full overflow-hidden">
+                <div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0"></div>
+                <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[11px] font-mono font-bold tracking-widest uppercase text-stone-800 dark:text-stone-200 whitespace-nowrap">
+                  <span class="text-signal-accent">${stats.wins}-${stats.losses}</span>
+                  <span class="text-stone-300 dark:text-stone-700">|</span>
+                  <span>${standingText} ${gbText}</span>
+                  <span class="text-stone-300 dark:text-stone-700">|</span>
+                  <span>STREAK: ${stats.streak}</span>
+                </div>
+              </div>
+            `;
+            return;
+          }
+        }
+
+        // 3. FALLBACK
+        container.innerHTML = `
+          <a href="https://www.google.com/search?q=${encodeURIComponent(currentFilter + ' scores standings record')}" target="_blank" 
+             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M21 3l-9 9-4-4-6 6"/></svg>
+            View Live Vitals & Standings ↗
+          </a>
+        `;
+      } catch(e) {
+        container.innerHTML = '';
       }
     }
 
-    // --- UI EVENT HANDLERS ---
+    // --- PIPELINE LOGIC ---
     function toggleSettings() {
       const modal = document.getElementById('settings-modal');
       const isOpen = modal.getAttribute('data-open') === 'true';
@@ -240,9 +316,7 @@
         document.getElementById('topics-list').innerHTML = userTopics.map(topic => `
           <div class="flex justify-between items-center bg-stone-50 dark:bg-[#2C2C2E] p-3 rounded-xl border border-stone-100 dark:border-stone-800">
             <span class="font-medium text-sm">${topic}</span>
-            <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
+            <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
         `).join('');
       }
@@ -253,40 +327,26 @@
       const input = document.getElementById('new-topic-input');
       const val = input.value.trim();
       if (val && !userTopics.includes(val)) {
-        userTopics.push(val);
-        localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-        input.value = '';
-        toggleSettings();
-        setFilter(val);
-        fetchSignals(true);
+        userTopics.push(val); localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+        input.value = ''; toggleSettings(); setFilter(val); fetchSignals(true);
       }
     });
 
     window.removeTopic = (topic) => {
       userTopics = userTopics.filter(t => t !== topic);
       localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-      toggleSettings(); // re-render list
-      if (currentFilter === topic) setFilter('Overview');
-      fetchSignals(true);
+      toggleSettings(); if (currentFilter === topic) setFilter('Overview'); fetchSignals(true);
     };
 
     window.setFilter = (f) => {
-      currentFilter = f;
-      renderFilters();
-      renderVitals();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      renderDashboard();
+      currentFilter = f; renderFilters(); renderVitals(); window.scrollTo({ top: 0, behavior: 'smooth' }); renderDashboard();
     };
 
-    // --- PIPELINE LOGIC ---
     function renderFilters() {
       const container = document.getElementById('filter-container');
-      const activeFilters = ['Overview', ...userTopics];
-      container.innerHTML = activeFilters.map(f => {
+      container.innerHTML = ['Overview', ...userTopics].map(f => {
         const isActive = currentFilter === f;
-        const classes = isActive 
-          ? 'text-black dark:text-white border-black dark:border-white font-semibold' 
-          : 'text-stone-500 dark:text-stone-500 border-transparent hover:text-stone-800 dark:hover:text-stone-300';
+        const classes = isActive ? 'text-black dark:text-white border-black dark:border-white font-semibold' : 'text-stone-500 dark:text-stone-500 border-transparent hover:text-stone-800 dark:hover:text-stone-300';
         return `<button onclick="setFilter('${f}')" class="active-press text-sm px-3 py-2 border-b-2 transition-colors whitespace-nowrap no-select ${classes}">${f}</button>`;
       }).join('');
     }
@@ -294,120 +354,35 @@
     function renderDashboard() {
       const container = document.getElementById('dashboard-content');
       const filtered = wireData.filter(e => currentFilter === 'Overview' || e.topic === currentFilter);
-      
       if (isSyncing && wireData.length === 0) return;
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center py-12 text-sm text-stone-400 font-mono">No signals detected. Waiting for intelligence...</div>`;
-        return;
-      }
+      if (filtered.length === 0) { container.innerHTML = `<div class="text-center py-12 text-sm text-stone-400 font-mono">No signals detected. Waiting for intelligence...</div>`; return; }
 
-      const heroItem = filtered[0];
-      const wireItems = filtered.slice(1);
+      const heroItem = filtered[0]; const wireItems = filtered.slice(1);
       let html = '';
 
-      // 1. HERO CARD
       if (heroItem.image) {
-        html += `
-          <a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" 
-             class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-4 block bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800">
-            <div class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" 
-                 style="background-image: url('${heroItem.image}');"></div>
-            <div class="absolute inset-0 hero-gradient"></div>
-            <div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end">
-              <div class="flex items-center gap-3 mb-3">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/50 text-white backdrop-blur-md border border-white/10">
-                  ${heroItem.topic}
-                </span>
-                <span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1">
-                  <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                  ${getTimeAgo(heroItem.pubDate)}
-                </span>
-              </div>
-              <h2 class="text-2xl sm:text-3xl font-serif font-medium leading-tight text-white mb-2 line-clamp-3" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
-                ${heroItem.title}
-              </h2>
-            </div>
-          </a>
-        `;
+        html += `<a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-4 block bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800"><div class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" style="background-image: url('${heroItem.image}');"></div><div class="absolute inset-0 hero-gradient"></div><div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end"><div class="flex items-center gap-3 mb-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/50 text-white backdrop-blur-md border border-white/10">${heroItem.topic}</span><span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>${getTimeAgo(heroItem.pubDate)}</span></div><h2 class="text-2xl sm:text-3xl font-serif font-medium leading-tight text-white mb-2 line-clamp-3" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">${heroItem.title}</h2></div></a>`;
       } else {
         const brand = getTopicBrand(heroItem.topic);
-        html += `
-          <a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" 
-             class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-4 block shadow-sm border border-stone-200 dark:border-stone-800"
-             style="background: linear-gradient(135deg, ${brand.from} 0%, ${brand.to} 100%);">
-            <div class="absolute -right-4 -bottom-8 text-[100px] sm:text-[140px] font-black text-white/[0.04] select-none tracking-tighter leading-none pointer-events-none whitespace-nowrap">
-              ${heroItem.topic.toUpperCase()}
-            </div>
-            <div class="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none" style="background-color: ${brand.accent};"></div>
-            <div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end z-10">
-              <div class="flex items-center gap-3 mb-3">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-white/10 text-white backdrop-blur-md border border-white/10">
-                  ${heroItem.topic}
-                </span>
-                <span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1">
-                  <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                  ${getTimeAgo(heroItem.pubDate)}
-                </span>
-              </div>
-              <h2 class="text-2xl sm:text-3xl font-serif font-medium leading-tight text-white mb-2 line-clamp-3">
-                ${heroItem.title}
-              </h2>
-            </div>
-          </a>
-        `;
+        html += `<a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" class="active-press group relative w-full h-72 sm:h-80 rounded-[2rem] overflow-hidden mb-4 block shadow-sm border border-stone-200 dark:border-stone-800" style="background: linear-gradient(135deg, ${brand.from} 0%, ${brand.to} 100%);"><div class="absolute -right-4 -bottom-8 text-[100px] sm:text-[140px] font-black text-white/[0.04] select-none tracking-tighter leading-none pointer-events-none whitespace-nowrap">${heroItem.topic.toUpperCase()}</div><div class="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none" style="background-color: ${brand.accent};"></div><div class="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col justify-end z-10"><div class="flex items-center gap-3 mb-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-white/10 text-white backdrop-blur-md border border-white/10">${heroItem.topic}</span><span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>${getTimeAgo(heroItem.pubDate)}</span></div><h2 class="text-2xl sm:text-3xl font-serif font-medium leading-tight text-white mb-2 line-clamp-3">${heroItem.title}</h2></div></a>`;
       }
 
-      // 2. DENSE WIRE
       html += `<div class="flex flex-col">`;
       wireItems.forEach(item => {
         const impact = analyzeImpact(item.title);
-        const thumbnailHtml = item.image ? `
-          <div class="shrink-0 ml-4 w-20 h-20 rounded-xl bg-stone-200 dark:bg-stone-800 bg-cover bg-center border border-stone-100 dark:border-stone-800/50" 
-               style="background-image: url('${item.image}')"></div>
-        ` : '';
-
-        html += `
-          <a href="${item.link}" target="_blank" rel="noopener noreferrer" 
-             class="active-press py-4 border-b border-stone-100 dark:border-stone-900 last:border-0 flex items-center justify-between group">
-            <div class="flex-1 pr-2">
-              <div class="flex items-center gap-2 mb-1.5">
-                <span class="text-[9px] font-black uppercase tracking-widest ${impact.color}">${impact.level}</span>
-                <span class="text-stone-300 dark:text-stone-800 mx-1">•</span>
-                <span class="text-[10px] font-mono text-stone-500 uppercase tracking-wide truncate max-w-[120px]">${item.topic}</span>
-              </div>
-              <h3 class="text-[15px] sm:text-base font-medium leading-snug text-stone-900 dark:text-stone-100 group-hover:text-signal-accent transition-colors ${item.image ? 'line-clamp-2' : 'line-clamp-3'}">
-                ${item.title}
-              </h3>
-              <div class="text-[10px] font-mono text-stone-400 mt-2 flex items-center gap-2">
-                <span>${getTimeAgo(item.pubDate)}</span>
-                <span class="text-stone-300 dark:text-stone-800 font-sans">•</span>
-                <span class="truncate">${item.source}</span>
-              </div>
-            </div>
-            ${thumbnailHtml}
-          </a>
-        `;
+        const thumbnailHtml = item.image ? `<div class="shrink-0 ml-4 w-20 h-20 rounded-xl bg-stone-200 dark:bg-stone-800 bg-cover bg-center border border-stone-100 dark:border-stone-800/50" style="background-image: url('${item.image}')"></div>` : '';
+        html += `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="active-press py-4 border-b border-stone-100 dark:border-stone-900 last:border-0 flex items-center justify-between group"><div class="flex-1 pr-2"><div class="flex items-center gap-2 mb-1.5"><span class="text-[9px] font-black uppercase tracking-widest ${impact.color}">${impact.level}</span><span class="text-stone-300 dark:text-stone-800 mx-1">•</span><span class="text-[10px] font-mono text-stone-500 uppercase tracking-wide truncate max-w-[120px]">${item.topic}</span></div><h3 class="text-[15px] sm:text-base font-medium leading-snug text-stone-900 dark:text-stone-100 group-hover:text-signal-accent transition-colors ${item.image ? 'line-clamp-2' : 'line-clamp-3'}">${item.title}</h3><div class="text-[10px] font-mono text-stone-400 mt-2 flex items-center gap-2"><span>${getTimeAgo(item.pubDate)}</span><span class="text-stone-300 dark:text-stone-800 font-sans">•</span><span class="truncate">${item.source}</span></div></div>${thumbnailHtml}</a>`;
       });
-      html += `</div>`;
-      container.innerHTML = html;
+      container.innerHTML = html + `</div>`;
     }
 
-    // --- INTELLIGENCE ENGINE ---
     async function fetchSignals(manual = false) {
       if (isSyncing) return;
       isSyncing = true;
+      const btn = document.getElementById('sync-btn'); const text = document.getElementById('status-text'); const dot = document.getElementById('pulse-dot');
+      btn.classList.add('animate-spin'); dot.classList.replace('bg-emerald-500', 'bg-stone-400'); dot.classList.remove('animate-pulse'); text.innerText = 'GATHERING INTEL...';
       
-      const btn = document.getElementById('sync-btn');
-      const text = document.getElementById('status-text');
-      const dot = document.getElementById('pulse-dot');
-      
-      btn.classList.add('animate-spin');
-      dot.classList.replace('bg-emerald-500', 'bg-stone-400');
-      dot.classList.remove('animate-pulse');
-      text.innerText = 'GATHERING INTEL...';
-      
-      renderFilters();
-      renderVitals(); 
+      renderFilters(); renderVitals(); 
       
       let allSignals = [];
       for (let topic of userTopics) {
@@ -416,71 +391,43 @@
           const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
           const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
           const data = await res.json();
-          
           if (data && data.items) {
             const parsed = data.items.map(item => {
-              const titleParts = item.title.split(' - ');
-              const source = titleParts.pop(); 
-              const cleanTitle = titleParts.join(' - ').trim();
-
-              let extractedImage = null;
+              const titleParts = item.title.split(' - '); const source = titleParts.pop(); const cleanTitle = titleParts.join(' - ').trim();
+              let extImg = null;
               if (item.description) {
                 const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
-                if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) {
-                   extractedImage = imgMatch[1];
-                }
+                if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
               }
-              return {
-                id: item.guid, topic: topic, source: source, title: cleanTitle,
-                pubDate: item.pubDate, image: extractedImage, link: item.link
-              };
+              return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg, link: item.link };
             });
             allSignals = [...allSignals, ...parsed];
           }
         } catch (err) {}
       }
 
-      // De-duplication
-      const uniqueSignals = [];
-      const titleSignatures = new Set();
+      const uniqueSignals = []; const titleSignatures = new Set();
       allSignals.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
       allSignals.forEach(signal => {
         const signature = signal.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').substring(0, 35);
-        if (!titleSignatures.has(signature)) {
-          titleSignatures.add(signature);
-          uniqueSignals.push(signal);
-        }
+        if (!titleSignatures.has(signature)) { titleSignatures.add(signature); uniqueSignals.push(signal); }
       });
       
-      wireData = uniqueSignals;
-      localStorage.setItem('signalPassV6', JSON.stringify(wireData));
+      wireData = uniqueSignals; localStorage.setItem('signalPassV6', JSON.stringify(wireData));
       
-      isSyncing = false;
-      btn.classList.remove('animate-spin');
-      dot.classList.replace('bg-stone-400', 'bg-emerald-500');
-      dot.classList.add('animate-pulse');
-      text.innerText = 'LIVE NETWORK';
-      
+      isSyncing = false; btn.classList.remove('animate-spin'); dot.classList.replace('bg-stone-400', 'bg-emerald-500'); dot.classList.add('animate-pulse'); text.innerText = 'LIVE NETWORK';
       renderDashboard();
     }
 
     function init() {
       const cached = localStorage.getItem('signalPassV6');
-      if (cached) {
-        try {
-          wireData = JSON.parse(cached);
-          renderFilters();
-          renderVitals();
-          renderDashboard();
-          document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...';
-        } catch(e) {}
-      }
-      fetchSignals();
-      setInterval(fetchSignals, 15 * 60 * 1000);
+      if (cached) { try { wireData = JSON.parse(cached); renderFilters(); renderVitals(); renderDashboard(); document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...'; } catch(e) {} }
+      fetchSignals(); setInterval(fetchSignals, 15 * 60 * 1000);
     }
-
     init();
   </script>
 </body>
 </html>
+
+
+```
