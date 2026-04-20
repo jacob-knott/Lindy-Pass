@@ -82,7 +82,7 @@
 
     <!-- MAIN DASHBOARD -->
     <main id="dashboard-content" class="flex flex-col gap-0">
-      <div class="animate-pulse h-48 bg-stone-200 dark:bg-stone-900 rounded-3xl w-full mb-4"></div>
+      <div class="animate-pulse h-48 bg-stone-200 dark:bg-stone-900 rounded-[2rem] w-full mb-4"></div>
       <div class="animate-pulse h-16 bg-stone-100 dark:bg-stone-900/50 rounded-xl w-full mb-2"></div>
     </main>
 
@@ -118,17 +118,21 @@
     let mlbStandingsCache = null;
     let sortableInstance = null;
     
-    const DEFAULT_TOPICS = ['Kansas City Royals', 'Auburn Tigers', 'PGA Tour'];
+    const DEFAULT_TOPICS = ['Kansas City Royals', 'PGA Tour', 'Auburn Football', 'Auburn Basketball', 'Auburn Baseball'];
     let userTopics = JSON.parse(localStorage.getItem('signalPassTopics')) || DEFAULT_TOPICS;
 
-    // --- UTILITIES ---
+    // --- BRANDING UTILITIES ---
     function getTopicBrand(topicName) {
+      const lower = topicName.toLowerCase();
+      if (lower.includes('royals')) return { from: '#004687', to: '#000000', accent: '#bd9b60' };
+      if (lower.includes('auburn')) return { from: '#0c2340', to: '#050f1c', accent: '#e87722' };
+      if (lower.includes('pga')) return { from: '#0a3a2a', to: '#000000', accent: '#F9E547' };
+
       const charCode = topicName.charCodeAt(0) + topicName.charCodeAt(topicName.length - 1);
       const palettes = [
-        { from: '#004687', to: '#000000', accent: '#bd9b60' }, // Royals
-        { from: '#0c2340', to: '#050f1c', accent: '#e87722' }, // Auburn
-        { from: '#0a3a2a', to: '#000000', accent: '#F9E547' }, // PGA
         { from: '#1a1a2e', to: '#000000', accent: '#a5b4fc' },
+        { from: '#310000', to: '#000000', accent: '#ff4444' },
+        { from: '#1f2937', to: '#000000', accent: '#3b82f6' }
       ];
       return palettes[charCode % palettes.length];
     }
@@ -137,7 +141,7 @@
       const past = new Date(dateString.replace(/-/g, '/').replace('T', ' ')); 
       const diffMins = Math.floor((new Date() - past) / 60000);
       const diffHrs = Math.floor(diffMins / 60);
-      if (isNaN(diffMins)) return 'RECENTLY';
+      if (isNaN(diffMins) || diffMins < 0) return 'JUST NOW'; // Fallback for bad RSS timestamps
       if (diffMins < 10) return 'JUST NOW';
       if (diffMins < 60) return `${diffMins}M AGO`;
       if (diffHrs < 24) return `${diffHrs}H AGO`;
@@ -146,56 +150,95 @@
 
     function analyzeImpact(title) {
       const lower = title.toLowerCase();
-      if (lower.match(/(injury|torn|surgery|trade|fired|commits|portal|transfer|suspended|il)/)) return { level: 'CRITICAL', color: 'text-red-500' };
+      if (lower.match(/(injury|torn|surgery|trade|fired|commits|portal|transfer|suspended|il|arrest)/)) return { level: 'CRITICAL', color: 'text-red-500' };
       if (lower.match(/(win|champion|lead|draft|signs|extension|rumor|sweep|record|homer|blast)/)) return { level: 'HIGH', color: 'text-orange-500' };
       return { level: 'UPDATE', color: 'text-stone-400' };
     }
 
-    // --- LIVE SCORE TELEMETRY & STANDINGS ---
-    async function checkLiveGames(topicName) {
-      const endpoints = [
-        'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
-        'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard'
-      ];
-      const topicLower = topicName.toLowerCase();
+    // --- CONCURRENT LIVE SCORE TELEMETRY & STANDINGS ---
+    
+    function getExpandedDateParams() {
+      const d = new Date();
+      const yest = new Date(d); yest.setDate(d.getDate() - 1);
+      const tom = new Date(d); tom.setDate(d.getDate() + 2);
+      const pad = n => n.toString().padStart(2, '0');
+      return `?dates=${yest.getFullYear()}${pad(yest.getMonth()+1)}${pad(yest.getDate())}-${tom.getFullYear()}${pad(tom.getMonth()+1)}${pad(tom.getDate())}&limit=100`;
+    }
 
-      for (let url of endpoints) {
+    // DRY Fallback Deep Link HTML
+    const getFallbackVitalsHTML = (topic) => `
+      <a href="https://www.google.com/search?q=${encodeURIComponent(topic + ' scores standings record')}" target="_blank" 
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M21 3l-9 9-4-4-6 6"/></svg>
+        View Live Vitals & Standings ↗
+      </a>
+    `;
+
+    async function checkLiveGames(topicName) {
+      const dateParams = getExpandedDateParams();
+      const endpoints = [
+        `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`,
+        `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`,
+        `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`,
+        `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`
+      ];
+      
+      const topicLower = topicName.toLowerCase();
+      const cleanTopic = topicLower.replace(/\b(football|basketball|baseball|mens|womens|tour|athletics)\b/g, '').trim();
+      const searchTerms = cleanTopic.split(' ').filter(w => w.length > 1);
+
+      // OPTIMIZATION: Fetch all ESPN endpoints concurrently
+      const fetchPromises = endpoints.map(async (url) => {
         try {
           const res = await fetch(url);
           const data = await res.json();
-          if (!data.events) continue;
-
-          for (let event of data.events) {
-            if (!event.competitions || !event.competitions[0]) continue;
-            const comp = event.competitions[0];
-            
-            const isMatch = comp.competitors.some(c => {
+          if (!data.events) return [];
+          
+          return data.events.filter(event => {
+            if (!event.competitions || !event.competitions[0]) return false;
+            return event.competitions[0].competitors.some(c => {
                const fullName = c.team.displayName.toLowerCase(); 
                const abbrev = c.team.abbreviation.toLowerCase(); 
-               if (fullName === topicLower || abbrev === topicLower) return true;
-               const searchTerms = topicLower.split(' ').filter(w => w.length > 1);
                return searchTerms.length > 0 && searchTerms.every(term => fullName.includes(term) || abbrev === term);
             });
-            
-            if (isMatch) {
-              const awayTeam = comp.competitors.find(c => c.homeAway === 'away');
-              const homeTeam = comp.competitors.find(c => c.homeAway === 'home');
-              const status = event.status.type.state;
-              const detail = event.status.type.detail;
+          });
+        } catch(e) { return []; }
+      });
 
-              return {
-                isLive: status === 'in',
-                isPre: status === 'pre',
-                isPost: status === 'post',
-                statusDetail: detail,
-                away: { name: awayTeam.team.abbreviation, score: awayTeam.score },
-                home: { name: homeTeam.team.abbreviation, score: homeTeam.score },
-                link: event.links.find(l => l.rel.includes('desktop'))?.href || `https://www.espn.com/search/_/q/${encodeURIComponent(topicName)}`
-              };
-            }
-          }
-        } catch(e) { }
+      const resultsArrays = await Promise.all(fetchPromises);
+      const matchedEvents = resultsArrays.flat();
+
+      if (matchedEvents.length === 0) return null;
+
+      // Priority Engine
+      let bestEvent = matchedEvents.find(e => e.status.type.state === 'in');
+      if (!bestEvent) {
+        const preGames = matchedEvents.filter(e => e.status.type.state === 'pre').sort((a,b) => new Date(a.date) - new Date(b.date));
+        if (preGames.length > 0) bestEvent = preGames[0];
+      }
+      if (!bestEvent) {
+        const postGames = matchedEvents.filter(e => e.status.type.state === 'post').sort((a,b) => new Date(b.date) - new Date(a.date));
+        if (postGames.length > 0) bestEvent = postGames[0];
+      }
+
+      if (bestEvent) {
+        const comp = bestEvent.competitions[0];
+        const awayTeam = comp.competitors.find(c => c.homeAway === 'away');
+        const homeTeam = comp.competitors.find(c => c.homeAway === 'home');
+        const status = bestEvent.status.type.state;
+        
+        let detail = bestEvent.status.type.detail;
+        if (status === 'pre') {
+          detail = `NEXT • ${new Date(bestEvent.date).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}`;
+        } else if (status === 'post') {
+          detail = 'FINAL';
+        }
+
+        return {
+          isLive: status === 'in', isPre: status === 'pre', isPost: status === 'post', statusDetail: detail,
+          away: { name: awayTeam.team.abbreviation, score: awayTeam.score }, home: { name: homeTeam.team.abbreviation, score: homeTeam.score },
+          link: bestEvent.links.find(l => l.rel.includes('desktop'))?.href || `https://www.espn.com/search/_/q/${encodeURIComponent(topicName)}`
+        };
       }
       return null;
     }
@@ -231,6 +274,7 @@
       container.innerHTML = `<div class="animate-pulse h-8 w-48 bg-stone-100 dark:bg-stone-900 rounded-lg"></div>`;
 
       try {
+        // Fetch Live Games and Standings concurrently
         const [liveGame, mlbTeams] = await Promise.all([
           checkLiveGames(currentFilter),
           loadMLBStandings()
@@ -239,49 +283,38 @@
         let matchedStats = null;
         if (mlbTeams) {
           const query = currentFilter.toLowerCase();
-          const matchedTeam = Object.keys(mlbTeams).find(t => t === query || t.endsWith(" " + query) || t.startsWith(query + " "));
+          const cleanQuery = query.replace(/\b(baseball|basketball|football)\b/g, '').trim();
+          const matchedTeam = Object.keys(mlbTeams).find(t => t.includes(cleanQuery));
           if (matchedTeam) matchedStats = mlbTeams[matchedTeam];
         }
 
-        // SCENARIO 1: We have BOTH a Game today and Standings (The Dual-Panel)
         if (liveGame && matchedStats) {
           const isLive = liveGame.isLive;
           const gameBg = isLive ? 'bg-red-50 dark:bg-red-900/20' : 'bg-[#F2F2F7] dark:bg-[#1C1C1E] hover:bg-stone-200 dark:hover:bg-stone-800';
           const textClass = isLive ? 'text-red-700 dark:text-red-400' : 'text-stone-800 dark:text-stone-200';
-          const indicator = isLive 
-            ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>`
-            : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0"></div>`;
-
-          let standingText = `${matchedStats.rank}${matchedStats.rank == 1 ? 'ST' : matchedStats.rank == 2 ? 'ND' : matchedStats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
+          const indicator = isLive ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>` : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
+          const standingText = `${matchedStats.rank}${['ST','ND','RD'][matchedStats.rank-1] || 'TH'} IN DIV`;
           const gbText = matchedStats.gb !== '-' ? `(${matchedStats.gb} GB)` : '';
 
           container.innerHTML = `
             <div class="rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm w-full overflow-hidden flex flex-col bg-white dark:bg-[#111]">
-              <!-- TOP ROW: LIVE/LATEST GAME -->
               <a href="${liveGame.link}" target="_blank" class="active-press flex items-center gap-3 px-3 py-2.5 transition-colors ${gameBg}">
                 ${indicator}
                 <div class="flex items-center justify-between w-full text-[12px] font-mono font-bold tracking-widest uppercase ${textClass} whitespace-nowrap">
                   <div class="flex items-center gap-2">
-                    <span class="${liveGame.away.score > liveGame.home.score ? '' : 'opacity-70'}">${liveGame.away.name} ${liveGame.away.score || ''}</span>
-                    <span class="opacity-40">-</span>
-                    <span class="${liveGame.home.score > liveGame.away.score ? '' : 'opacity-70'}">${liveGame.home.name} ${liveGame.home.score || ''}</span>
+                    <span class="${liveGame.isPost && liveGame.away.score < liveGame.home.score ? 'opacity-50' : ''}">${liveGame.away.name} ${liveGame.away.score || ''}</span>
+                    <span class="opacity-30">-</span>
+                    <span class="${liveGame.isPost && liveGame.home.score < liveGame.away.score ? 'opacity-50' : ''}">${liveGame.home.name} ${liveGame.home.score || ''}</span>
                   </div>
-                  <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">
-                    ${liveGame.statusDetail}
-                  </div>
+                  <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">${liveGame.statusDetail}</div>
                 </div>
               </a>
-              <!-- DIVIDER -->
               <div class="h-px w-full bg-stone-200 dark:bg-stone-800"></div>
-              <!-- BOTTOM ROW: STANDINGS -->
               <div class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-[#111]">
-                <div class="w-1.5 h-1.5 shrink-0 opacity-0"></div> <!-- spacing alignment to match top row dot -->
+                <div class="w-1.5 h-1.5 shrink-0 opacity-0"></div>
                 <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[10px] font-mono font-bold tracking-widest uppercase text-stone-600 dark:text-stone-400 whitespace-nowrap">
-                  <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span>
-                  <span class="text-stone-300 dark:text-stone-700">|</span>
-                  <span>${standingText} ${gbText}</span>
-                  <span class="text-stone-300 dark:text-stone-700">|</span>
-                  <span>STREAK: ${matchedStats.streak}</span>
+                  <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span><span class="text-stone-300 dark:text-stone-700">|</span>
+                  <span>${standingText} ${gbText}</span><span class="text-stone-300 dark:text-stone-700">|</span><span>STREAK: ${matchedStats.streak}</span>
                 </div>
               </div>
             </div>
@@ -289,67 +322,51 @@
           return;
         }
 
-        // SCENARIO 2: Game ONLY (No standings available, e.g., College Football)
         if (liveGame) {
           const isLive = liveGame.isLive;
           const bgClass = isLive ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50' : 'bg-[#F2F2F7] dark:bg-[#1C1C1E] border-stone-200 dark:border-stone-800';
           const textClass = isLive ? 'text-red-700 dark:text-red-400' : 'text-stone-800 dark:text-stone-200';
-          const indicator = isLive 
-            ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>`
-            : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0"></div>`;
+          const indicator = isLive ? `<span class="flex h-1.5 w-1.5 relative shrink-0"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>` : `<div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>`;
 
           container.innerHTML = `
             <a href="${liveGame.link}" target="_blank" class="active-press flex items-center gap-3 px-3 py-2 rounded-lg border shadow-sm w-full overflow-hidden transition-colors ${bgClass}">
               ${indicator}
               <div class="flex items-center justify-between w-full text-[12px] font-mono font-bold tracking-widest uppercase ${textClass} whitespace-nowrap">
                 <div class="flex items-center gap-2">
-                  <span class="${liveGame.away.score > liveGame.home.score ? '' : 'opacity-70'}">${liveGame.away.name} ${liveGame.away.score || ''}</span>
-                  <span class="opacity-40">-</span>
-                  <span class="${liveGame.home.score > liveGame.away.score ? '' : 'opacity-70'}">${liveGame.home.name} ${liveGame.home.score || ''}</span>
+                  <span class="${liveGame.isPost && liveGame.away.score < liveGame.home.score ? 'opacity-50' : ''}">${liveGame.away.name} ${liveGame.away.score || ''}</span>
+                  <span class="opacity-30">-</span>
+                  <span class="${liveGame.isPost && liveGame.home.score < liveGame.away.score ? 'opacity-50' : ''}">${liveGame.home.name} ${liveGame.home.score || ''}</span>
                 </div>
-                <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">
-                  ${liveGame.statusDetail}
-                </div>
+                <div class="text-[10px] px-2 py-0.5 rounded ${isLive ? 'bg-red-100 dark:bg-red-900/40' : 'bg-stone-200 dark:bg-stone-800'}">${liveGame.statusDetail}</div>
               </div>
             </a>
           `;
           return; 
         }
 
-        // SCENARIO 3: Standings ONLY (No game today)
         if (matchedStats) {
-          let standingText = `${matchedStats.rank}${matchedStats.rank == 1 ? 'ST' : matchedStats.rank == 2 ? 'ND' : matchedStats.rank == 3 ? 'RD' : 'TH'} IN DIV`;
+          const standingText = `${matchedStats.rank}${['ST','ND','RD'][matchedStats.rank-1] || 'TH'} IN DIV`;
           const gbText = matchedStats.gb !== '-' ? `(${matchedStats.gb} GB)` : '';
 
           container.innerHTML = `
             <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-stone-200 dark:border-stone-800 shadow-sm w-full overflow-hidden">
-              <div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0"></div>
+              <div class="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 opacity-50"></div>
               <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[11px] font-mono font-bold tracking-widest uppercase text-stone-800 dark:text-stone-200 whitespace-nowrap">
-                <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>${standingText} ${gbText}</span>
-                <span class="text-stone-300 dark:text-stone-700">|</span>
-                <span>STREAK: ${matchedStats.streak}</span>
+                <span class="text-signal-accent">${matchedStats.wins}-${matchedStats.losses}</span><span class="text-stone-300 dark:text-stone-700">|</span>
+                <span>${standingText} ${gbText}</span><span class="text-stone-300 dark:text-stone-700">|</span><span>STREAK: ${matchedStats.streak}</span>
               </div>
             </div>
           `;
           return;
         }
 
-        // SCENARIO 4: FALLBACK
-        container.innerHTML = `
-          <a href="https://www.google.com/search?q=${encodeURIComponent(currentFilter + ' scores standings record')}" target="_blank" 
-             class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors active-press text-[10px] font-mono text-stone-600 dark:text-stone-300 font-bold tracking-widest uppercase">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3v6h-6"/><path d="M21 3l-9 9-4-4-6 6"/></svg>
-            View Live Vitals & Standings ↗
-          </a>
-        `;
+        container.innerHTML = getFallbackVitalsHTML(currentFilter);
       } catch(e) {
         container.innerHTML = '';
       }
     }
 
-    // --- PIPELINE LOGIC WITH DRAG & DROP ---
+    // --- SETTINGS UI & DRAG AND DROP ---
     function renderSettingsList() {
       const list = document.getElementById('topics-list');
       list.innerHTML = userTopics.map(topic => `
@@ -360,9 +377,7 @@
             </div>
             <span class="font-medium text-sm select-none">${topic}</span>
           </div>
-          <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
+          <button onclick="removeTopic('${topic}')" class="text-stone-400 hover:text-red-500 transition-colors p-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
       `).join('');
 
@@ -392,22 +407,15 @@
       const input = document.getElementById('new-topic-input');
       const val = input.value.trim();
       if (val && !userTopics.includes(val)) {
-        userTopics.push(val); 
-        localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-        input.value = ''; 
-        renderSettingsList(); 
-        setFilter(val); 
-        fetchSignals(true);
+        userTopics.push(val); localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
+        input.value = ''; toggleSettings(); setFilter(val); fetchSignals(true);
       }
     });
 
     window.removeTopic = (topic) => {
       userTopics = userTopics.filter(t => t !== topic);
       localStorage.setItem('signalPassTopics', JSON.stringify(userTopics));
-      renderSettingsList(); 
-      if (currentFilter === topic) setFilter('Overview'); 
-      renderFilters();
-      fetchSignals(true);
+      toggleSettings(); if (currentFilter === topic) setFilter('Overview'); renderFilters(); fetchSignals(true);
     };
 
     window.setFilter = (f) => {
@@ -423,6 +431,7 @@
       }).join('');
     }
 
+    // --- MAIN RENDERER ---
     function renderDashboard() {
       const container = document.getElementById('dashboard-content');
       const filtered = wireData.filter(e => currentFilter === 'Overview' || e.topic === currentFilter);
@@ -432,7 +441,6 @@
       const heroItem = filtered[0]; const wireItems = filtered.slice(1);
       let html = '';
 
-      // REDUCED HERO HEIGHT: h-48 sm:h-56
       if (heroItem.image) {
         html += `<a href="${heroItem.link}" target="_blank" rel="noopener noreferrer" class="active-press group relative w-full h-48 sm:h-56 rounded-[2rem] overflow-hidden mb-4 block bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800"><div class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" style="background-image: url('${heroItem.image}');"></div><div class="absolute inset-0 hero-gradient"></div><div class="absolute inset-x-0 bottom-0 p-5 sm:p-6 flex flex-col justify-end"><div class="flex items-center gap-3 mb-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/50 text-white backdrop-blur-md border border-white/10">${heroItem.topic}</span><span class="text-[10px] font-mono text-stone-300 font-medium flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>${getTimeAgo(heroItem.pubDate)}</span></div><h2 class="text-xl sm:text-2xl font-serif font-medium leading-tight text-white mb-1 line-clamp-2" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">${heroItem.title}</h2></div></a>`;
       } else {
@@ -449,6 +457,7 @@
       container.innerHTML = html + `</div>`;
     }
 
+    // --- CONCURRENT INTELLIGENCE ENGINE ---
     async function fetchSignals(manual = false) {
       if (isSyncing) return;
       isSyncing = true;
@@ -457,27 +466,29 @@
       
       renderFilters(); renderVitals(); 
       
-      let allSignals = [];
-      for (let topic of userTopics) {
+      // OPTIMIZATION: Fetch all Google News RSS feeds concurrently instead of sequentially
+      const fetchPromises = userTopics.map(async (topic) => {
         try {
           const query = encodeURIComponent(`${topic} when:2d`);
           const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
           const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
           const data = await res.json();
-          if (data && data.items) {
-            const parsed = data.items.map(item => {
-              const titleParts = item.title.split(' - '); const source = titleParts.pop(); const cleanTitle = titleParts.join(' - ').trim();
-              let extImg = null;
-              if (item.description) {
-                const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
-                if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
-              }
-              return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg, link: item.link };
-            });
-            allSignals = [...allSignals, ...parsed];
-          }
-        } catch (err) {}
-      }
+          if (!data || !data.items) return [];
+
+          return data.items.map(item => {
+            const titleParts = item.title.split(' - '); const source = titleParts.pop(); const cleanTitle = titleParts.join(' - ').trim();
+            let extImg = null;
+            if (item.description) {
+              const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+              if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
+            }
+            return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg, link: item.link };
+          });
+        } catch (err) { return []; }
+      });
+
+      const resultsArrays = await Promise.all(fetchPromises);
+      let allSignals = resultsArrays.flat();
 
       const uniqueSignals = []; const titleSignatures = new Set();
       allSignals.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
@@ -486,14 +497,15 @@
         if (!titleSignatures.has(signature)) { titleSignatures.add(signature); uniqueSignals.push(signal); }
       });
       
-      wireData = uniqueSignals; localStorage.setItem('signalPassV6', JSON.stringify(wireData));
+      // OPTIMIZATION: Updated cache key to prevent stale old formats from breaking the app
+      wireData = uniqueSignals; localStorage.setItem('signalPassV9_2', JSON.stringify(wireData));
       
       isSyncing = false; btn.classList.remove('animate-spin'); dot.classList.replace('bg-stone-400', 'bg-emerald-500'); dot.classList.add('animate-pulse'); text.innerText = 'LIVE NETWORK';
       renderDashboard();
     }
 
     function init() {
-      const cached = localStorage.getItem('signalPassV6');
+      const cached = localStorage.getItem('signalPassV9_2');
       if (cached) { try { wireData = JSON.parse(cached); renderFilters(); renderVitals(); renderDashboard(); document.getElementById('status-text').innerText = 'PULLING FRESH INTEL...'; } catch(e) {} }
       fetchSignals(); setInterval(fetchSignals, 15 * 60 * 1000);
     }
