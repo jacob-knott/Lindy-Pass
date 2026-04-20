@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en" class="antialiased">
 <head>
@@ -155,46 +156,74 @@
       return { level: 'UPDATE', color: 'text-stone-500 dark:text-stone-400' };
     }
 
-    // --- MASTER TELEMETRY ENGINE (The "Where's My Team At?" Matrix) ---
-    function getExpandedDateParams() {
+    // --- MASTER TELEMETRY ENGINE ---
+    
+    // 1. The Out-Of-Season Fallback Fetcher
+    async function fetchFallbackTeamAPI(topicName) {
+      const topicLower = topicName.toLowerCase();
+      let sportPath = '';
+      if (topicLower.includes('football')) sportPath = 'football/college-football';
+      else if (topicLower.includes('basketball')) sportPath = 'basketball/mens-college-basketball';
+      else if (topicLower.includes('baseball') && topicLower.includes('auburn')) sportPath = 'baseball/college-baseball';
+      else if (topicLower.includes('royals') || topicLower.includes('mlb')) sportPath = 'baseball/mlb';
+      else sportPath = 'football/college-football'; // Generic fallback
+
+      const cleanTopic = topicLower.replace(/\b(football|basketball|baseball|mens|womens|tour|athletics|mlb|nba|nfl)\b/g, '').trim();
+      const slug = cleanTopic.replace(/\s+/g, '-');
+
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/teams/${slug}`);
+        const data = await res.json();
+        if (!data.team) return null;
+
+        const t = data.team;
+        const record = t.record?.items?.[0]?.summary || '';
+        const rank = t.rank || null;
+        const logo = t.logos?.[0]?.href || null;
+        const standing = t.standingSummary || '';
+
+        let gameObj = null;
+        if (t.nextEvent && t.nextEvent.length > 0) {
+          const evt = t.nextEvent[0];
+          const comp = evt.competitions[0];
+          const opp = comp.competitors.find(c => c.id !== t.id) || comp.competitors[0];
+          const isHome = comp.competitors.find(c => c.id === t.id)?.homeAway === 'home';
+
+          const date = new Date(evt.date);
+          const detail = `NEXT • ${date.toLocaleDateString('en-US', {month:'short', day:'numeric'})}`;
+
+          gameObj = {
+            isLive: false, isPre: true, isPost: false, detail: detail,
+            ourScore: '', oppScore: '',
+            oppAbbrev: opp.team?.abbreviation || opp.team?.displayName || 'TBD',
+            isHome: isHome, standing: standing
+          };
+        } else {
+          gameObj = {
+            isLive: false, isPre: true, isPost: false, detail: 'OFFSEASON',
+            ourScore: '', oppScore: '', oppAbbrev: 'TBD',
+            isHome: true, standing: standing
+          };
+        }
+
+        return {
+          type: 'team', teamName: t.displayName, logo: logo, record: record, rank: rank,
+          game: gameObj, link: t.links?.[0]?.href || '#'
+        };
+      } catch(e) { return null; }
+    }
+
+    // 2. The 7-Day Scoreboard Router
+    async function checkScoreboard(topicName) {
+      const topicLower = topicName.toLowerCase();
+      
       const d = new Date();
       const past = new Date(d); past.setDate(d.getDate() - 3); 
       const future = new Date(d); future.setDate(d.getDate() + 5); 
       const pad = n => n.toString().padStart(2, '0');
-      return `?dates=${past.getFullYear()}${pad(past.getMonth()+1)}${pad(past.getDate())}-${future.getFullYear()}${pad(future.getMonth()+1)}${pad(future.getDate())}&limit=200`;
-    }
+      const dateParams = `?dates=${past.getFullYear()}${pad(past.getMonth()+1)}${pad(past.getDate())}-${future.getFullYear()}${pad(future.getMonth()+1)}${pad(future.getDate())}&limit=200`;
 
-    async function fetchTeamVitals(topicName) {
-      const topicLower = topicName.toLowerCase();
-      
-      // 1. PGA TOUR SPECIFIC ROUTER
-      if (topicLower.includes('pga') || topicLower.includes('golf')) {
-        try {
-          const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
-          const data = await res.json();
-          const event = data.events[0];
-          if(!event) return null;
-          
-          const comp = event.competitions[0];
-          const leaders = comp.competitors.slice(0, 3).map((c, i) => {
-             // Safe extraction for Golf API which changes formatting occasionally
-             const scoreVal = typeof c.score === 'object' ? (c.score.displayValue || c.score.value || 'E') : c.score;
-             return `${i+1}. ${c.athlete.shortName} (${scoreVal})`;
-          }).join(' • ');
-          
-          return {
-            type: 'golf',
-            name: event.shortName || event.name,
-            detail: event.status.type.detail,
-            leaders: leaders
-          };
-        } catch(e) { return null; }
-      }
-
-      // 2. STANDARD TEAM SPORTS ROUTER
-      const dateParams = getExpandedDateParams();
       let endpoints = [];
-      
       if (topicLower.includes('football')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${dateParams}`];
       else if (topicLower.includes('basketball')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard${dateParams}`];
       else if (topicLower.includes('baseball') || topicLower.includes('mlb')) endpoints = [`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard${dateParams}`, `https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard${dateParams}`];
@@ -224,21 +253,18 @@
 
       if (matchedEvents.length === 0) return null;
 
-      // Priority: Live -> Next -> Latest
       let targetEvent = matchedEvents.find(e => e.status.type.state === 'in');
       if (!targetEvent) targetEvent = matchedEvents.filter(e => e.status.type.state === 'pre').sort((a,b) => new Date(a.date) - new Date(b.date))[0];
       if (!targetEvent) targetEvent = matchedEvents.filter(e => e.status.type.state === 'post').sort((a,b) => new Date(b.date) - new Date(a.date))[0];
 
       if (targetEvent) {
         const comp = targetEvent.competitions[0];
-        
         const ourTeamObj = comp.competitors.find(c => {
            const fn = c.team.displayName.toLowerCase();
            return searchTerms.every(term => fn.includes(term));
         }) || comp.competitors[0]; 
         
         const opponentObj = comp.competitors.find(c => c.team.id !== ourTeamObj.team.id) || comp.competitors[1];
-
         const status = targetEvent.status.type.state;
         
         const record = ourTeamObj.records && ourTeamObj.records.length > 0 ? ourTeamObj.records[0].summary : null;
@@ -256,25 +282,48 @@
         else if (status === 'post') detail = 'FINAL';
 
         return {
-          type: 'team',
-          teamName: ourTeamObj.team.displayName,
-          logo: logo,
-          record: record,
-          rank: rank,
+          type: 'team', teamName: ourTeamObj.team.displayName, logo: logo, record: record, rank: rank,
           game: {
-            isLive: status === 'in',
-            isPre: status === 'pre',
-            isPost: status === 'post',
-            detail: detail,
-            ourScore: ourTeamObj.score,
-            oppScore: opponentObj.score,
-            oppAbbrev: opponentObj.team.abbreviation,
-            isHome: ourTeamObj.homeAway === 'home'
+            isLive: status === 'in', isPre: status === 'pre', isPost: status === 'post', detail: detail,
+            ourScore: ourTeamObj.score, oppScore: opponentObj.score, oppAbbrev: opponentObj.team.abbreviation,
+            isHome: ourTeamObj.homeAway === 'home', standing: ''
           },
           link: targetEvent.links.find(l => l.rel.includes('desktop'))?.href || `https://www.espn.com/search/_/q/${encodeURIComponent(topicName)}`
         };
       }
       return null;
+    }
+
+    async function fetchTeamVitals(topicName) {
+      const topicLower = topicName.toLowerCase();
+      
+      // Golf Specific Architecture
+      if (topicLower.includes('pga') || topicLower.includes('golf')) {
+        try {
+          const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+          const data = await res.json();
+          const event = data.events[0];
+          if(!event) return null;
+          
+          const comp = event.competitions[0];
+          const leaders = comp.competitors.slice(0, 3).map((c, i) => {
+             const scoreVal = typeof c.score === 'object' ? (c.score.displayValue || c.score.value || 'E') : c.score;
+             return `${i+1}. ${c.athlete.shortName} (${scoreVal})`;
+          }).join(' • ');
+          
+          let detail = event.status.type.detail;
+          if (event.status.type.state === 'post') detail = 'FINAL RESULTS';
+          
+          return { type: 'golf', name: event.shortName || event.name, detail: detail, leaders: leaders };
+        } catch(e) { return null; }
+      }
+
+      // Deep Team Telemetry (Scoreboard -> Fallback API)
+      let vitals = await checkScoreboard(topicName);
+      if (!vitals) {
+        vitals = await fetchFallbackTeamAPI(topicName);
+      }
+      return vitals;
     }
 
     async function loadMLBStandings() {
@@ -301,7 +350,7 @@
       const container = document.getElementById('vitals-container');
       
       if (currentFilter === 'Overview') {
-        container.innerHTML = ``; // Overview uses the magazine layout, no vitals card
+        container.innerHTML = ``; 
         return;
       }
 
@@ -317,7 +366,7 @@
         const [vitals, mlbTeams] = await Promise.all([ fetchTeamVitals(currentFilter), loadMLBStandings() ]);
 
         if (!vitals) {
-          container.innerHTML = ``; // Hide cleanly if offseason/no data
+          container.innerHTML = ``; 
           return;
         }
 
@@ -349,7 +398,11 @@
           
           let gameString = '';
           let indicator = '';
-          if (game.isLive) {
+          
+          if (game.detail === 'OFFSEASON') {
+             indicator = `<span class="text-stone-500">STATUS</span>`;
+             gameString = `<span class="opacity-50">AWAITING SCHEDULE</span>`;
+          } else if (game.isLive) {
             indicator = `<span class="text-red-500 flex items-center gap-1.5"><span class="flex h-1.5 w-1.5 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>LIVE</span>`;
             gameString = `<span class="font-bold text-stone-900 dark:text-white">${game.ourScore}</span><span class="opacity-40 px-1">-</span><span class="opacity-70">${game.oppScore}</span> <span class="opacity-50 px-1">${game.isHome ? 'VS' : '@'}</span> ${game.oppAbbrev}`;
           } else if (game.isPre) {
@@ -362,28 +415,39 @@
             gameString = `${wL} <span class="font-bold text-stone-900 dark:text-white ml-1">${game.ourScore}</span><span class="opacity-40 px-1">-</span><span class="opacity-70">${game.oppScore}</span> <span class="opacity-50 px-1">${game.isHome ? 'VS' : '@'}</span> ${game.oppAbbrev}`;
           }
 
-          // Fuzzy Standings Logic for MLB
-          let mlbHtml = '';
+          // Universal Standings Injection
+          let standingHtml = '';
+          let isMlbInjected = false;
+          
           if (mlbTeams) {
             const queryTokens = currentFilter.toLowerCase().split(' ').filter(t => t.length > 2 && t !== 'baseball' && t !== 'mlb');
             const matchedTeam = Object.keys(mlbTeams).find(t => queryTokens.every(token => t.includes(token)));
             
             if (matchedTeam) {
               const stats = mlbTeams[matchedTeam];
-              const standingText = `${stats.rank}${['ST','ND','RD'][stats.rank-1] || 'TH'} IN DIV`;
+              const sText = `${stats.rank}${['ST','ND','RD'][stats.rank-1] || 'TH'} IN DIV`;
               const gbText = stats.gb !== '-' ? `(${stats.gb} GB)` : '';
-              mlbHtml = `
+              standingHtml = `
                 <div class="h-px w-full bg-stone-100 dark:bg-stone-800 my-3"></div>
                 <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[10px] font-mono font-bold tracking-widest uppercase text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                  <span>${standingText} <span class="opacity-50">${gbText}</span></span>
+                  <span>${sText} <span class="opacity-50">${gbText}</span></span>
                   <span class="text-stone-200 dark:text-stone-800">|</span>
                   <span>STREAK: ${stats.streak}</span>
                 </div>
               `;
+              isMlbInjected = true;
             }
           }
+          
+          if (!isMlbInjected && game.standing) {
+             standingHtml = `
+                <div class="h-px w-full bg-stone-100 dark:bg-stone-800 my-3"></div>
+                <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar text-[10px] font-mono font-bold tracking-widest uppercase text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                  <span>${game.standing}</span>
+                </div>
+              `;
+          }
 
-          // Add brand-colored subtle glow to the card
           const brand = getTopicBrand(currentFilter);
 
           container.innerHTML = `
@@ -412,7 +476,7 @@
                    </div>
                    <span class="text-[10px] px-2 py-1 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded font-mono shrink-0 leading-none">${game.detail}</span>
                </div>
-               ${mlbHtml}
+               ${standingHtml}
             </a>
           `;
         }
@@ -503,8 +567,6 @@
 
       let html = '';
 
-      // ARCHITECTURE CHANGE: Only show the massive Magazine Hero on the generic 'Overview' tab.
-      // On specific team tabs, the Vitals Card (rendered above) is the hero. Plunge straight into the data.
       if (currentFilter === 'Overview') {
         const heroItem = filtered[0];
         const wireItems = filtered.slice(1);
@@ -538,26 +600,19 @@
           </a>`;
         }
         
-        // Loop the rest for the Overview
         html += `<div class="flex flex-col">`;
-        wireItems.forEach(item => {
-          html += buildWireItem(item);
-        });
+        wireItems.forEach(item => { html += buildWireItem(item); });
         html += `</div>`;
         
       } else {
-        // Team Tabs: NO HERO. Pure Density. Vitals is the anchor.
         html += `<div class="flex flex-col">`;
-        filtered.forEach(item => {
-          html += buildWireItem(item);
-        });
+        filtered.forEach(item => { html += buildWireItem(item); });
         html += `</div>`;
       }
       
       container.innerHTML = html;
     }
 
-    // Extracted for clean reuse in the new layout structure
     function buildWireItem(item) {
       const impact = analyzeImpact(item.title);
       const thumbnailHtml = item.image ? `<div class="shrink-0 ml-4 w-[72px] h-[72px] rounded-xl bg-stone-200 dark:bg-stone-800 bg-cover bg-center border border-stone-100 dark:border-stone-800/50" style="background-image: url('${item.image}')"></div>` : '';
@@ -606,7 +661,7 @@
               const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
               if (imgMatch && imgMatch[1].startsWith('http') && !imgMatch[1].includes('1x1')) extImg = imgMatch[1];
             }
-            return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg };
+            return { id: item.guid, topic: topic, source: source, title: cleanTitle, pubDate: item.pubDate, image: extImg, link: item.link };
           });
         } catch (err) { return []; }
       });
@@ -636,3 +691,4 @@
   </script>
 </body>
 </html>
+
