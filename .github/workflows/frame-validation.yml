@@ -1,0 +1,84 @@
+name: Validate Frame deployment
+
+on:
+  push:
+    paths:
+      - 'frame/**'
+      - '.github/workflows/frame-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and validate Frame
+        id: validate
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, json, zlib
+
+          root = Path('frame')
+          parts = sorted(root.glob('payload-*.txt'))
+          report = {
+              'parts': [],
+              'part_count': len(parts),
+              'valid': False,
+              'error': None,
+          }
+          for path in parts:
+              text = path.read_text(encoding='utf-8').strip()
+              blob = b'blob ' + str(len(text.encode())).encode() + b'\0' + text.encode()
+              report['parts'].append({
+                  'name': path.name,
+                  'characters': len(text),
+                  'git_blob_sha1': hashlib.sha1(blob).hexdigest(),
+              })
+
+          encoded = ''.join(p.read_text(encoding='utf-8').strip() for p in parts)
+          compressed = base64.b64decode(encoded, validate=True)
+          inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+          output = bytearray()
+          try:
+              for offset in range(0, len(compressed), 1024):
+                  output.extend(inflater.decompress(compressed[offset:offset + 1024]))
+              output.extend(inflater.flush())
+              report['valid'] = inflater.eof
+              if not inflater.eof:
+                  report['error'] = 'gzip stream ended before EOF'
+          except Exception as exc:
+              report['error'] = f'{type(exc).__name__}: {exc}'
+
+          Path('validation-output').mkdir(exist_ok=True)
+          Path('validation-output/reconstructed-or-partial.html').write_bytes(output)
+          report['compressed_bytes'] = len(compressed)
+          report['reconstructed_bytes'] = len(output)
+          Path('validation-output/report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report, indent=2))
+          if not report['valid']:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload validation bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-validation-bundle
+          path: |
+            frame/index.html
+            frame/payload-*.txt
+            validation-output/**
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Fail when Frame is invalid
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
