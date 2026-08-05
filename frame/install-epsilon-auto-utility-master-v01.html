@@ -1,8 +1,157 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Install Epsilon Auto deck into Frame</title><style>body{margin:0;background:#111315;color:#f4f3ef;font-family:Inter,Aptos,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}.card{max-width:720px;background:#171a1d;border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:30px;box-shadow:0 30px 90px rgba(0,0,0,.35)}h1{font-size:34px;line-height:1;margin:0 0 12px;letter-spacing:-.04em}p{color:#b3bac3;line-height:1.55}button,a.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:13px;padding:12px 16px;background:#1861F5;color:white;font-weight:750;text-decoration:none;margin-right:10px}a{color:#9bb5ff}.status{margin-top:16px;padding:12px 14px;border-radius:14px;background:#0f1318;color:#d8e2ef;font-size:13px}code{color:#d8e2ef}</style></head><body><main class="card"><div style="color:#8fa2ff;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase">Frame deck installer</div><h1>Epsilon Auto Utility Master v0.1</h1><p>This installs the completed 8-slide Epsilon Auto capabilities deck into your local Frame library in this browser. The deck is stored as editable Frame vector/canvas objects with source-safe image placeholders.</p><button id="install">Install into Frame</button><a class="btn" href="./">Open Frame</a><p>After installing, Frame will open and select <code>Epsilon Auto Utility Master v0.1</code>.</p><div id="status" class="status">Ready to install.</div></main><script>
-const PAYLOAD='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';
-const DB_NAME='frame-presentation-os-v3',DB_VERSION=1,DB_STORE='decks',ACTIVE='frame-presentation-os-v3-active';
-function openDb(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE,{keyPath:'id'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error||new Error('Could not open Frame storage'))})}
-async function decodeDeck(){if(!('DecompressionStream'in window))throw new Error('Use a current Chrome or Edge browser.');const bin=atob(PAYLOAD),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(stream).text())}
-async function installDeck(){const status=document.getElementById('status');try{status.textContent='Installing deck into Frame library…';const deck=await decodeDeck();deck.updatedAt=new Date().toISOString();const db=await openDb();await new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(deck);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});localStorage.setItem(ACTIVE,deck.id);status.textContent='Installed. Opening Frame…';setTimeout(()=>location.href='./',700)}catch(e){status.textContent='Install failed: '+(e.message||e)}}
-document.getElementById('install').addEventListener('click',installDeck);
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111315">
+<title>Install Epsilon Auto deck into Frame</title>
+<style>
+:root{color-scheme:dark;--bg:#111315;--card:#171a1d;--line:rgba(255,255,255,.12);--text:#f4f3ef;--muted:#b3bac3;--blue:#1861f5;--good:#55d68b;--bad:#ff8f8f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Aptos,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}.card{width:min(760px,100%);background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px;box-shadow:0 30px 90px rgba(0,0,0,.35)}.eyebrow{color:#8fa2ff;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}h1{font-size:clamp(30px,5vw,44px);line-height:.98;margin:6px 0 14px;letter-spacing:-.045em}p{color:var(--muted);line-height:1.58;margin:0 0 18px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 16px}button,a.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:13px;padding:12px 16px;background:var(--blue);color:white;font:inherit;font-weight:760;text-decoration:none;cursor:pointer}button.secondary,a.secondary{background:#262b32;color:#eef2f7;border:1px solid var(--line)}button:disabled{opacity:.55;cursor:wait}.status{margin-top:16px;padding:13px 15px;border-radius:14px;background:#0f1318;color:#d8e2ef;font-size:13px;line-height:1.5;border:1px solid rgba(255,255,255,.06)}.status.good{color:var(--good)}.status.bad{color:var(--bad)}.progress{height:5px;background:#252a31;border-radius:999px;overflow:hidden;margin-top:10px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .2s ease}code{color:#d8e2ef}.detail{font-size:12px;color:#87909b;margin-top:12px}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="eyebrow">Frame deck installer · repaired</div>
+  <h1>Epsilon Auto Utility Master v0.1</h1>
+  <p>Installs the completed 8-slide Epsilon Auto capabilities deck into the Frame library in this browser. This repaired installer loads and validates the deck as separate files instead of relying on one fragile embedded string.</p>
+  <div class="actions">
+    <button id="install">Install into Frame</button>
+    <a class="btn secondary" href="./">Open Frame</a>
+    <button class="secondary" id="download" type="button">Download .frame.json</button>
+  </div>
+  <p>After installation, Frame will open and select <code>Epsilon Auto Utility Master v0.1</code>.</p>
+  <div id="status" class="status">Ready. The installer will verify the payload before writing anything.</div>
+  <div class="progress"><span id="progress"></span></div>
+  <div class="detail">Deck source: <code>decks/epsilon-auto-utility-master-v01.manifest.json</code></div>
+</main>
+<script>
+const DB_NAME='frame-presentation-os-v3';
+const DB_VERSION=1;
+const DB_STORE='decks';
+const ACTIVE='frame-presentation-os-v3-active';
+const FALLBACK='frame-presentation-os-v3-fallback';
+const MANIFEST_URL='./decks/epsilon-auto-utility-master-v01.manifest.json';
+let cachedDeck=null;
+
+const statusEl=document.getElementById('status');
+const progressEl=document.getElementById('progress');
+const installBtn=document.getElementById('install');
+const downloadBtn=document.getElementById('download');
+
+function setStatus(message,kind=''){
+  statusEl.textContent=message;
+  statusEl.className='status'+(kind?' '+kind:'');
+}
+function setProgress(value){progressEl.style.width=Math.max(0,Math.min(100,value))+'%'}
+function bytesToHex(buffer){return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function sha256(bytes){
+  if(!crypto?.subtle) return null;
+  return bytesToHex(await crypto.subtle.digest('SHA-256',bytes));
+}
+function base64ToBytes(value){
+  const clean=value.replace(/\s+/g,'').replace(/-/g,'+').replace(/_/g,'/');
+  if(!/^[A-Za-z0-9+/]*={0,2}$/.test(clean)) throw new Error('Deck payload contains an invalid base64 character.');
+  const padded=clean+'='.repeat((4-clean.length%4)%4);
+  const binary=atob(padded);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+async function fetchText(url){
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok) throw new Error(`Could not load ${url} (${response.status}).`);
+  return response.text();
+}
+async function loadDeck(){
+  if(cachedDeck) return cachedDeck;
+  setProgress(8); setStatus('Loading the deck manifest…');
+  const manifestResponse=await fetch(MANIFEST_URL,{cache:'no-store'});
+  if(!manifestResponse.ok) throw new Error(`Could not load the deck manifest (${manifestResponse.status}).`);
+  const manifest=await manifestResponse.json();
+  if(manifest.schema!=='frame-deck-payload-v1'||!Array.isArray(manifest.chunks)) throw new Error('The deck manifest is not valid.');
+  setProgress(20); setStatus(`Loading ${manifest.chunks.length} validated deck parts…`);
+  const parts=[];
+  for(let i=0;i<manifest.chunks.length;i++){
+    parts.push(await fetchText('./decks/'+manifest.chunks[i]));
+    setProgress(20+Math.round(((i+1)/manifest.chunks.length)*30));
+  }
+  const encoded=parts.join('').replace(/\s+/g,'');
+  if(encoded.length!==manifest.base64Length) throw new Error(`Deck payload is incomplete (${encoded.length} of ${manifest.base64Length} characters). Refresh and try again.`);
+  const compressed=base64ToBytes(encoded);
+  if(compressed.byteLength!==manifest.compressedBytes) throw new Error('Deck payload byte count does not match the manifest.');
+  const compressedHash=await sha256(compressed);
+  if(compressedHash&&compressedHash!==manifest.compressedSha256) throw new Error('Deck payload failed its integrity check. Refresh and try again.');
+  if(!('DecompressionStream' in window)) throw new Error('Use a current version of Chrome or Edge to install this deck.');
+  setProgress(62); setStatus('Payload verified. Reconstructing the editable Frame deck…');
+  const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const rawBytes=new Uint8Array(await new Response(stream).arrayBuffer());
+  if(rawBytes.byteLength!==manifest.jsonBytes) throw new Error('Reconstructed deck size does not match the manifest.');
+  const jsonHash=await sha256(rawBytes);
+  if(jsonHash&&jsonHash!==manifest.jsonSha256) throw new Error('Reconstructed deck failed its integrity check.');
+  const deck=JSON.parse(new TextDecoder().decode(rawBytes));
+  if(deck.id!==manifest.deckId||!Array.isArray(deck.slides)||deck.slides.length!==manifest.slideCount) throw new Error('The reconstructed deck does not match the expected Frame deck.');
+  cachedDeck=deck;
+  setProgress(78);
+  return deck;
+}
+function openDb(){
+  return new Promise((resolve,reject)=>{
+    const request=indexedDB.open(DB_NAME,DB_VERSION);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE,{keyPath:'id'});
+    };
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('Could not open Frame storage.'));
+  });
+}
+async function saveDeck(deck){
+  if(!('indexedDB' in window)){
+    localStorage.setItem(FALLBACK,JSON.stringify(deck));
+    return;
+  }
+  const db=await openDb();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(DB_STORE,'readwrite');
+    tx.objectStore(DB_STORE).put(deck);
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error('Could not write the deck to Frame storage.'));
+    tx.onabort=()=>reject(tx.error||new Error('Frame storage cancelled the deck write.'));
+  });
+}
+async function installDeck(){
+  installBtn.disabled=true; downloadBtn.disabled=true;
+  try{
+    const deck=structuredClone(await loadDeck());
+    deck.updatedAt=new Date().toISOString();
+    setProgress(86); setStatus('Saving the editable deck into your Frame library…');
+    await saveDeck(deck);
+    localStorage.setItem(ACTIVE,deck.id);
+    setProgress(100); setStatus('Installed successfully. Opening Frame…','good');
+    setTimeout(()=>location.href='./?deck='+encodeURIComponent(deck.id)+'&installed=1',650);
+  }catch(error){
+    console.error(error);
+    setProgress(0); setStatus('Install failed: '+(error?.message||String(error)),'bad');
+    installBtn.disabled=false; downloadBtn.disabled=false;
+  }
+}
+async function downloadDeck(){
+  downloadBtn.disabled=true;
+  try{
+    const deck=await loadDeck();
+    const blob=new Blob([JSON.stringify(deck,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='epsilon-auto-utility-master-v01.frame.json';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    setProgress(100); setStatus('Deck file downloaded. Import it from Frame if direct installation is blocked by browser policy.','good');
+  }catch(error){
+    console.error(error); setProgress(0); setStatus('Download failed: '+(error?.message||String(error)),'bad');
+  }finally{downloadBtn.disabled=false;}
+}
+installBtn.addEventListener('click',installDeck);
+downloadBtn.addEventListener('click',downloadDeck);
+</script>
+</body>
+</html>
